@@ -5,7 +5,7 @@ using Microsoft.Testing.Platform.OutputDevice;
 
 namespace Gandalf.Engine;
 
-internal sealed class DisplayTestApplicationLifecycleCallbacks : ITestApplicationLifecycleCallbacks, IOutputDeviceDataProducer
+internal sealed class DisplayTestApplicationLifecycleCallbacks : ITestHostApplicationLifetime, IOutputDeviceDataProducer
 {
     private readonly IOutputDevice _outputDevice;
 

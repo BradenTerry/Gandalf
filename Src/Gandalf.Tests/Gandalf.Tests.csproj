@@ -6,7 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
-    <IsTestProject>true</IsTestProject>
+    <TestingPlatformShowTestsFailure>true</TestingPlatformShowTestsFailure>
+    <TestingPlatformCaptureOutput>false</TestingPlatformCaptureOutput>
   </PropertyGroup>
 
   <Import Project="$(MSBuildThisFileDirectory)\..\Gandalf.Engine\Gandalf.Engine.props" />
@@ -15,8 +16,8 @@
     <ProjectReference Include="../Gandalf/Gandalf.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Include="..\Gandalf.Engine\Program.cs" Link="Program.cs" />
-  </ItemGroup>
+<ItemGroup>
+  <Compile Include="..\Gandalf.Engine\Program.cs" Link="Program.cs" />
+</ItemGroup>
 
 </Project>
