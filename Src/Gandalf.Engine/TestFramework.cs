@@ -92,224 +92,232 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IDisposa
         {
             case DiscoverTestExecutionRequest discoverTestExecutionRequest:
                 {
-                    try
-                    {
-                        var tests = GetTestsMethodFromAssemblies();
-                        foreach (var testInfo in tests)
-                        {
-                            var testNode = new TestNode()
-                            {
-                                Uid = testInfo.FullName,
-                                DisplayName = testInfo.MethodName,
-                                Properties = new PropertyBag(DiscoveredTestNodeStateProperty.CachedInstance),
-                            };
-
-                            TestMethodIdentifierProperty testMethodIdentifierProperty = new(testInfo.FullName,
-                            testInfo.Namespace,
-                            "int",
-                            testInfo.MethodName,
-                            [], //test.GetParameters().Select(x => x.ParameterType.FullName).ToArray()!,
-                            "test.ReturnType.FullName!");
-
-                            testNode.Properties.Add(testMethodIdentifierProperty);
-
-                            await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(discoverTestExecutionRequest.Session.SessionUid, testNode));
-                        }
-                    }
-                    finally
-                    {
-                        // Ensure to complete the request also in case of exception
-                        context.Complete();
-                    }
-
+                    await HandleTestDiscoveryAsync(context, discoverTestExecutionRequest);
                     break;
                 }
 
             case RunTestExecutionRequest runTestExecutionRequest:
                 {
-                    try
-                    {
-                        await _outputDevice.DisplayAsync(this, new FormattedTextOutputDeviceData($"TestingFramework version '{Version}' running tests with parallelism of {_dopValue}") { ForegroundColor = new SystemConsoleColor() { ConsoleColor = ConsoleColor.Green } });
-
-                        // StringBuilder reportBody = new();
-                        var tests = GetTestsMethodFromAssemblies();
-                        List<Task> results = new();
-                        foreach (var test in tests)
-                        {
-                            if (runTestExecutionRequest.Filter is TestNodeUidListFilter filter)
-                            {
-                                if (!filter.TestNodeUids.Any(testId => testId == test.FullName))
-                                {
-                                    continue;
-                                }
-                            }
-
-                            // SkipAttribute? skipAttribute = test.GetCustomAttribute<SkipAttribute>();
-                            // if (skipAttribute != null)
-                            // {
-                            //     var skippedTestNode = new TestNode()
-                            //     {
-                            //         Uid = $"{test.DeclaringType!.FullName}.{test.Name}",
-                            //         DisplayName = test.Name,
-                            //         Properties = new PropertyBag(new SkippedTestNodeStateProperty(skipAttribute.Reason)),
-                            //     };
-
-                            //     // if (_capabilities.TrxCapability.IsTrxEnabled)
-                            //     // {
-                            //     //     FillTrxProperties(skippedTestNode, test);
-                            //     // }
-
-                            //     await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, skippedTestNode));
-
-                            //     lock (reportBody)
-                            //     {
-                            //         reportBody.AppendLine(CultureInfo.InvariantCulture, $"Test {skippedTestNode.Uid} skipped");
-                            //     }
-
-                            //     continue;
-                            // }
-
-                            results.Add(Task.Run(async () =>
-                            {
-                                await _dop.WaitAsync();
-                                try
-                                {
-                                    // var testOutputHelper = new TestOutputHelper();
-                                    try
-                                    {
-                                        // if (test.GetParameters().Length == 1 && test.GetParameters()[0].ParameterType == typeof(ITestOutputHelper))
-                                        // {
-                                        //     test.Invoke(instance, new object[] { testOutputHelper });
-
-                                        // }
-                                        // else
-                                        // {
-                                        await test.InvokeAsync();
-                                        // }
-
-                                        var successfulTestNode = new TestNode()
-                                        {
-                                            Uid = test.FullName,
-                                            DisplayName = test.MethodName,
-                                            Properties = new PropertyBag(PassedTestNodeStateProperty.CachedInstance),
-                                        };
-
-                                        // if (_capabilities.TrxCapability.IsTrxEnabled)
-                                        // {
-                                        //     FillTrxProperties(successfulTestNode, test);
-                                        // }
-
-                                        //                                         if (testOutputHelper.Output.Length > 0)
-                                        //                                         {
-                                        // #pragma warning disable TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-                                        //                                             successfulTestNode.Properties.Add(new StandardOutputProperty(testOutputHelper.Output.ToString()));
-                                        // #pragma warning restore TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-                                        //                                         }
-
-                                        //                                         if (testOutputHelper.Error.Length > 0)
-                                        //                                         {
-                                        // #pragma warning disable TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-                                        //                                             successfulTestNode.Properties.Add(new StandardErrorProperty(testOutputHelper.Error.ToString()));
-                                        // #pragma warning restore TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-                                        //                                         }
-
-                                        await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, successfulTestNode));
-
-                                        //                                         lock (reportBody)
-                                        //                                         {
-                                        //                                             reportBody.AppendLine(CultureInfo.InvariantCulture, $"Test {successfulTestNode.Uid} succeeded");
-                                        //                                         }
-                                    }
-                                    catch (Exception ex) //when (ex.InnerException is AssertionException assertionException)
-                                    {
-                                        var assertionFailedTestNode = new TestNode()
-                                        {
-                                            Uid = test.FullName,
-                                            DisplayName = test.MethodName,
-                                            Properties = new PropertyBag(new FailedTestNodeStateProperty(ex)),
-                                        };
-
-                                        // if (_capabilities.TrxCapability.IsTrxEnabled)
-                                        // {
-                                        //     FillTrxProperties(assertionFailedTestNode, test, assertionException);
-                                        // }
-
-                                        //                                         if (testOutputHelper.Output.Length > 0)
-                                        //                                         {
-                                        // #pragma warning disable TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-                                        //                                             assertionFailedTestNode.Properties.Add(new StandardOutputProperty(testOutputHelper.Output.ToString()));
-                                        // #pragma warning restore TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-                                        //                                         }
-
-                                        //                                         if (testOutputHelper.Error.Length > 0)
-                                        //                                         {
-                                        // #pragma warning disable TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-                                        //                                             assertionFailedTestNode.Properties.Add(new StandardErrorProperty(testOutputHelper.Error.ToString()));
-                                        // #pragma warning restore TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-                                        //                                         }
-
-                                        await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, assertionFailedTestNode));
-
-                                        // reportBody.AppendLine(CultureInfo.InvariantCulture, $"Test {assertionFailedTestNode.Uid} failed");
-                                    }
-                                    //     catch (TargetInvocationException ex)
-                                    //     {
-                                    //         var failedTestNode = new TestNode()
-                                    //         {
-                                    //             Uid = $"{test.DeclaringType!.FullName}.{test.Name}",
-                                    //             DisplayName = test.Name,
-                                    //             Properties = new PropertyBag(new ErrorTestNodeStateProperty(ex.InnerException!)),
-                                    //         };
-
-                                    //         // if (_capabilities.TrxCapability.IsTrxEnabled)
-                                    //         // {
-                                    //         //     FillTrxProperties(failedTestNode, test, ex);
-                                    //         // }
-
-                                    //         if (testOutputHelper.Output.Length > 0)
-                                    //         {
-                                    //             // failedTestNode.Properties.Add(new StandardOutputProperty(testOutputHelper.Output.ToString()));
-                                    //         }
-
-                                    //         if (testOutputHelper.Error.Length > 0)
-                                    //         {
-                                    //             // failedTestNode.Properties.Add(new StandardErrorProperty(testOutputHelper.Error.ToString()));
-                                    //         }
-
-                                    //         await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, failedTestNode));
-
-                                    //         lock (reportBody)
-                                    //         {
-                                    //             reportBody.AppendLine(CultureInfo.InvariantCulture, $"Test {failedTestNode.Uid} failed");
-                                    //         }
-                                    //     }
-                                }
-                                finally
-                                {
-                                    _dop.Release();
-                                }
-                            }));
-                        }
-
-                        await Task.WhenAll(results);
-
-                        if (!string.IsNullOrEmpty(_reportFile))
-                        {
-                            // File.WriteAllText(_reportFile, reportBody.ToString());
-                            await context.MessageBus.PublishAsync(this, new SessionFileArtifact(runTestExecutionRequest.Session.SessionUid, new FileInfo(_reportFile), "Testing framework report"));
-                        }
-                    }
-                    finally
-                    {
-                        // Ensure to complete the request also in case of exception
-                        context.Complete();
-                    }
-
+                    await HandleTestExecutionAsync(context, runTestExecutionRequest);
                     break;
                 }
 
             default:
                 throw new NotSupportedException($"Request {context.GetType()} not supported");
+        }
+    }
+
+    private async Task HandleTestExecutionAsync(ExecuteRequestContext context, RunTestExecutionRequest runTestExecutionRequest)
+    {
+        try
+        {
+            await _outputDevice.DisplayAsync(this, new FormattedTextOutputDeviceData($"TestingFramework version '{Version}' running tests with parallelism of {_dopValue}") { ForegroundColor = new SystemConsoleColor() { ConsoleColor = ConsoleColor.Green } });
+
+            // StringBuilder reportBody = new();
+            var tests = GetTestsMethodFromAssemblies();
+            List<Task> results = new();
+            foreach (var test in tests)
+            {
+                if (runTestExecutionRequest.Filter is TestNodeUidListFilter filter)
+                {
+                    if (!filter.TestNodeUids.Any(testId => testId == test.FullName))
+                    {
+                        continue;
+                    }
+                }
+
+                // SkipAttribute? skipAttribute = test.GetCustomAttribute<SkipAttribute>();
+                // if (skipAttribute != null)
+                // {
+                //     var skippedTestNode = new TestNode()
+                //     {
+                //         Uid = $"{test.DeclaringType!.FullName}.{test.Name}",
+                //         DisplayName = test.Name,
+                //         Properties = new PropertyBag(new SkippedTestNodeStateProperty(skipAttribute.Reason)),
+                //     };
+
+                //     // if (_capabilities.TrxCapability.IsTrxEnabled)
+                //     // {
+                //     //     FillTrxProperties(skippedTestNode, test);
+                //     // }
+
+                //     await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, skippedTestNode));
+
+                //     lock (reportBody)
+                //     {
+                //         reportBody.AppendLine(CultureInfo.InvariantCulture, $"Test {skippedTestNode.Uid} skipped");
+                //     }
+
+                //     continue;
+                // }
+
+                results.Add(Task.Run(async () =>
+                {
+                    await _dop.WaitAsync();
+                    try
+                    {
+                        // var testOutputHelper = new TestOutputHelper();
+                        try
+                        {
+                            // if (test.GetParameters().Length == 1 && test.GetParameters()[0].ParameterType == typeof(ITestOutputHelper))
+                            // {
+                            //     test.Invoke(instance, new object[] { testOutputHelper });
+
+                            // }
+                            // else
+                            // {
+                            await test.InvokeAsync();
+                            // }
+
+                            var successfulTestNode = new TestNode()
+                            {
+                                Uid = test.FullName,
+                                DisplayName = test.MethodName,
+                                Properties = new PropertyBag(PassedTestNodeStateProperty.CachedInstance),
+                            };
+
+                            // if (_capabilities.TrxCapability.IsTrxEnabled)
+                            // {
+                            //     FillTrxProperties(successfulTestNode, test);
+                            // }
+
+                            //                                         if (testOutputHelper.Output.Length > 0)
+                            //                                         {
+                            // #pragma warning disable TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+                            //                                             successfulTestNode.Properties.Add(new StandardOutputProperty(testOutputHelper.Output.ToString()));
+                            // #pragma warning restore TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+                            //                                         }
+
+                            //                                         if (testOutputHelper.Error.Length > 0)
+                            //                                         {
+                            // #pragma warning disable TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+                            //                                             successfulTestNode.Properties.Add(new StandardErrorProperty(testOutputHelper.Error.ToString()));
+                            // #pragma warning restore TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+                            //                                         }
+
+                            await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, successfulTestNode));
+
+                            //                                         lock (reportBody)
+                            //                                         {
+                            //                                             reportBody.AppendLine(CultureInfo.InvariantCulture, $"Test {successfulTestNode.Uid} succeeded");
+                            //                                         }
+                        }
+                        catch (Exception ex) //when (ex.InnerException is AssertionException assertionException)
+                        {
+                            var assertionFailedTestNode = new TestNode()
+                            {
+                                Uid = test.FullName,
+                                DisplayName = test.MethodName,
+                                Properties = new PropertyBag(new FailedTestNodeStateProperty(ex)),
+                            };
+
+                            // if (_capabilities.TrxCapability.IsTrxEnabled)
+                            // {
+                            //     FillTrxProperties(assertionFailedTestNode, test, assertionException);
+                            // }
+
+                            //                                         if (testOutputHelper.Output.Length > 0)
+                            //                                         {
+                            // #pragma warning disable TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+                            //                                             assertionFailedTestNode.Properties.Add(new StandardOutputProperty(testOutputHelper.Output.ToString()));
+                            // #pragma warning restore TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+                            //                                         }
+
+                            //                                         if (testOutputHelper.Error.Length > 0)
+                            //                                         {
+                            // #pragma warning disable TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+                            //                                             assertionFailedTestNode.Properties.Add(new StandardErrorProperty(testOutputHelper.Error.ToString()));
+                            // #pragma warning restore TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+                            //                                         }
+
+                            await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, assertionFailedTestNode));
+
+                            // reportBody.AppendLine(CultureInfo.InvariantCulture, $"Test {assertionFailedTestNode.Uid} failed");
+                        }
+                        //     catch (TargetInvocationException ex)
+                        //     {
+                        //         var failedTestNode = new TestNode()
+                        //         {
+                        //             Uid = $"{test.DeclaringType!.FullName}.{test.Name}",
+                        //             DisplayName = test.Name,
+                        //             Properties = new PropertyBag(new ErrorTestNodeStateProperty(ex.InnerException!)),
+                        //         };
+
+                        //         // if (_capabilities.TrxCapability.IsTrxEnabled)
+                        //         // {
+                        //         //     FillTrxProperties(failedTestNode, test, ex);
+                        //         // }
+
+                        //         if (testOutputHelper.Output.Length > 0)
+                        //         {
+                        //             // failedTestNode.Properties.Add(new StandardOutputProperty(testOutputHelper.Output.ToString()));
+                        //         }
+
+                        //         if (testOutputHelper.Error.Length > 0)
+                        //         {
+                        //             // failedTestNode.Properties.Add(new StandardErrorProperty(testOutputHelper.Error.ToString()));
+                        //         }
+
+                        //         await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, failedTestNode));
+
+                        //         lock (reportBody)
+                        //         {
+                        //             reportBody.AppendLine(CultureInfo.InvariantCulture, $"Test {failedTestNode.Uid} failed");
+                        //         }
+                        //     }
+                    }
+                    finally
+                    {
+                        _dop.Release();
+                    }
+                }));
+            }
+
+            await Task.WhenAll(results);
+
+            if (!string.IsNullOrEmpty(_reportFile))
+            {
+                // File.WriteAllText(_reportFile, reportBody.ToString());
+                await context.MessageBus.PublishAsync(this, new SessionFileArtifact(runTestExecutionRequest.Session.SessionUid, new FileInfo(_reportFile), "Testing framework report"));
+            }
+        }
+        finally
+        {
+            // Ensure to complete the request also in case of exception
+            context.Complete();
+        }
+    }
+
+    private async Task HandleTestDiscoveryAsync(ExecuteRequestContext context, DiscoverTestExecutionRequest discoverTestExecutionRequest)
+    {
+        try
+        {
+            var tests = GetTestsMethodFromAssemblies();
+            foreach (var testInfo in tests)
+            {
+                var testNode = new TestNode()
+                {
+                    Uid = testInfo.FullName,
+                    DisplayName = testInfo.MethodName,
+                    Properties = new PropertyBag(DiscoveredTestNodeStateProperty.CachedInstance),
+                };
+
+                TestMethodIdentifierProperty testMethodIdentifierProperty = new(testInfo.FullName,
+                testInfo.Namespace,
+                "int",
+                testInfo.MethodName,
+                [], //test.GetParameters().Select(x => x.ParameterType.FullName).ToArray()!,
+                "test.ReturnType.FullName!");
+
+                testNode.Properties.Add(testMethodIdentifierProperty);
+
+                await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(discoverTestExecutionRequest.Session.SessionUid, testNode));
+            }
+        }
+        finally
+        {
+            // Ensure to complete the request also in case of exception
+            context.Complete();
         }
     }
 

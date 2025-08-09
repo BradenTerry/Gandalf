@@ -5,10 +5,18 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <IsTestProject>true</IsTestProject>
   </PropertyGroup>
+
+  <Import Project="$(MSBuildThisFileDirectory)\..\Gandalf.Engine\Gandalf.Engine.props" />
 
   <ItemGroup>
     <ProjectReference Include="../Gandalf/Gandalf.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Gandalf.Engine\Program.cs" Link="Program.cs" />
   </ItemGroup>
 
 </Project>
