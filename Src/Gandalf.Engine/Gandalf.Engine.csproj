@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Gandalf.Core\Gandalf.Core.csproj" />
+    <ProjectReference Include="..\Gandalf.Engine.SourceGenerators\Gandalf.Engine.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
