@@ -1,0 +1,43 @@
+name: .NET Test
+
+on:
+  push:
+    paths:
+      - '/Src/Gandalf/**'
+      - '/Src/Gandalf.Core/**'
+      - '/Src/Gandalf.Engine/**'
+      - '/Src/Gandalf.Engine.SourceGenerators/**'
+      - '/Src/Gandalf.Tests/**'
+      - '.github/workflows/test.yml'
+  pull_request:
+    paths:
+      - '/Src/Gandalf/**'
+      - '/Src/Gandalf.Core/**'
+      - '/Src/Gandalf.Engine/**'
+      - '/Src/Gandalf.Engine.SourceGenerators/**'
+      - '/Src/Gandalf.Tests/**'
+      - '.github/workflows/test.yml'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.x
+            9.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Test Gandalf.Tests
+        run: dotnet test Src/Gandalf.Tests/Gandalf.Tests.csproj --no-build --configuration Release --verbosity normal
