@@ -148,7 +148,10 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
                     testInfo.Assembly, // assembly name
                     testInfo.ClassName, // class type
                     testInfo.MethodName,
-                    0, // methodArity
+                    testInfo.Assembly, // assemblyFullName
+                    testInfo.Namespace,
+                    testInfo.ClassName,
+                    testInfo.MethodName,
                     [], // parameterTypeFullNames
                     typeof(Task).FullName!);
 
