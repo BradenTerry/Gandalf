@@ -1,6 +1,8 @@
 using System.Reflection;
+using Gandalf.Core;
 using Gandalf.Core.Helpers;
 using Gandalf.Core.Models;
+using Microsoft.Testing.Extensions.TrxReport.Abstractions;
 using Microsoft.Testing.Platform.Configurations;
 using Microsoft.Testing.Platform.Extensions.Messages;
 using Microsoft.Testing.Platform.Extensions.OutputDevice;
@@ -77,11 +79,13 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
             await _outputDevice.DisplayAsync(this, new FormattedTextOutputDeviceData($"Gandalf version '{Version}' running tests") { ForegroundColor = new SystemConsoleColor() { ConsoleColor = ConsoleColor.Green } });
 
             List<Task> results = new();
-            foreach (var test in DiscoveredTests.All.Where(test => _assemblies.Any(assembly => assembly.GetName().Name == test.Assembly)))
+            var testsToRun = DiscoveredTests.All.Where(test => _assemblies.Any(assembly => assembly.GetName().Name == test.Assembly)).ToList();
+            await _outputDevice.DisplayAsync(this, new FormattedTextOutputDeviceData($"Found {testsToRun.Count} tests to run.") { ForegroundColor = new SystemConsoleColor() { ConsoleColor = ConsoleColor.Green } });
+            foreach (var testInfo in testsToRun)
             {
                 if (runTestExecutionRequest.Filter is TestNodeUidListFilter filter)
                 {
-                    if (!filter.TestNodeUids.Any(testId => testId == test.FullName))
+                    if (!filter.TestNodeUids.Any(testId => testId == testInfo.Uid))
                     {
                         continue;
                     }
@@ -89,34 +93,62 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
 
                 results.Add(Task.Run(async () =>
                 {
+                    AsyncLocalTextWriter.Current.Value = new StringWriter();
+                    var asyncLocalOutput = new AsyncLocalTextWriter();
+                    var originalOut = Console.Out;
+                    Console.SetOut(asyncLocalOutput);
+
                     try
+                    {
+                        var startTime = DateTimeOffset.UtcNow;
+                        await testInfo.InvokeAsync();
+                        var endTime = DateTimeOffset.UtcNow;
+
+                        var successfulTestNode = new TestNode()
                         {
-                            var startTime = DateTimeOffset.UtcNow;
-                            await test.InvokeAsync();
-                            var endTime = DateTimeOffset.UtcNow;
+                            Uid = testInfo.Uid,
+                            DisplayName = testInfo.MethodName,
+                            Properties = new PropertyBag(PassedTestNodeStateProperty.CachedInstance)
+                        };
 
-                            var successfulTestNode = new TestNode()
-                            {
-                                Uid = test.FullName,
-                                DisplayName = test.MethodName,
-                                Properties = new PropertyBag(PassedTestNodeStateProperty.CachedInstance)
-                            };
+                        successfulTestNode.Properties.Add(new TimingProperty(new TimingInfo(startTime, endTime, endTime - startTime)));
 
-                            successfulTestNode.Properties.Add(new TimingProperty(new TimingInfo(startTime, endTime, endTime - startTime)));
+                        // Add captured output as a property
+#pragma warning disable TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+                        successfulTestNode.Properties.Add(new StandardOutputProperty(asyncLocalOutput.ToString()));
+#pragma warning restore TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
+                        if (testInfo.ParentUid != null)
+                            await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, successfulTestNode, testInfo.ParentUid));
+                        else
                             await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, successfulTestNode));
-                        }
-                        catch (Exception ex)
+                    }
+                    catch (Exception ex)
+                    {
+                        var assertionFailedTestNode = new TestNode
                         {
-                            var assertionFailedTestNode = new TestNode
-                            {
-                                Uid = test.FullName,
-                                DisplayName = test.MethodName,
-                                Properties = new PropertyBag(new FailedTestNodeStateProperty(ex)),
-                            };
+                            Uid = testInfo.FullName,
+                            DisplayName = testInfo.MethodName,
+                            Properties = new PropertyBag(new FailedTestNodeStateProperty(ex)),
+                        };
 
+                        // Add captured output even on failure
+#pragma warning disable TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+                        assertionFailedTestNode.Properties.Add(new StandardOutputProperty(asyncLocalOutput.ToString()));
+#pragma warning restore TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+
+                        await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, assertionFailedTestNode));
+
+                        if (testInfo.ParentUid != null)
+                            await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, assertionFailedTestNode, testInfo.ParentUid));
+                        else
                             await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, assertionFailedTestNode));
-                        }
+                    }
+                    finally
+                    {
+                        AsyncLocalTextWriter.Current.Value = null;
+                        Console.SetOut(originalOut);
+                    }
                 }));
             }
 
@@ -133,13 +165,15 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
     {
         try
         {
-            foreach (var testInfo in DiscoveredTests.All.Where(test => _assemblies.Any(assembly => assembly.GetName().Name == test.Assembly)))
+            var testsFound = DiscoveredTests.All.Where(test => _assemblies.Any(assembly => assembly.GetName().Name == test.Assembly));
+            Console.WriteLine(testsFound.Count() + " tests discovered.");
+            foreach (var testInfo in testsFound)
             {
                 var testNode = new TestNode()
                 {
-                    Uid = testInfo.FullName,
+                    Uid = testInfo.Uid,
                     DisplayName = testInfo.MethodName,
-                    Properties = new PropertyBag(DiscoveredTestNodeStateProperty.CachedInstance),
+                    Properties = new PropertyBag(DiscoveredTestNodeStateProperty.CachedInstance)
                 };
 
                 TestMethodIdentifierProperty testMethodIdentifierProperty = new(
@@ -147,18 +181,22 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
                     testInfo.Namespace,
                     testInfo.ClassName,
                     testInfo.MethodName,
-                    0, // TODO: Get MethtodArity
+                    0, // TODO: Get MethodArity
                     [], // parameterTypeFullNames
                     typeof(Task).FullName!);
 
                 testNode.Properties.Add(testMethodIdentifierProperty);
+                // Add source file location properties
+                testNode.Properties.Add(new TestFileLocationProperty(testInfo.FilePath, new LinePositionSpan(new LinePosition(testInfo.LineNumber, testInfo.LinePosition), new LinePosition(testInfo.EndLineNumber, testInfo.EndLinePosition))));
 
-                await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(discoverTestExecutionRequest.Session.SessionUid, testNode));
+                if (testInfo.ParentUid != null)
+                    await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(discoverTestExecutionRequest.Session.SessionUid, testNode, testInfo.ParentUid));
+                else
+                    await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(discoverTestExecutionRequest.Session.SessionUid, testNode));
             }
         }
         finally
         {
-            // Ensure to complete the request also in case of exception
             context.Complete();
         }
     }

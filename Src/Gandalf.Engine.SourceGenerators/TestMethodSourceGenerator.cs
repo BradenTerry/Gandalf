@@ -1,7 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Gandalf.Engine.SourceGenerators
@@ -22,7 +24,6 @@ namespace Gandalf.Engine.SourceGenerators
             context.RegisterSourceOutput(compilationAndMethods, (spc, source) =>
             {
                 var (compilation, methods) = source;
-                var testMethods = new List<(string assembly, string ns, string className, string methodName, bool isStatic)>();
 
                 foreach (var method in methods)
                 {
@@ -31,48 +32,92 @@ namespace Gandalf.Engine.SourceGenerators
                     if (symbol == null)
                         continue;
 
-                    if (symbol.GetAttributes().Any(attr => attr.AttributeClass?.Name == "TestAttribute"))
-                    {
-                        var classSymbol = symbol.ContainingType;
-                        var ns = classSymbol.ContainingNamespace.ToDisplayString();
-                        var assembly = classSymbol.ContainingAssembly.Name;
-                        var isStatic = symbol.IsStatic;
-                        testMethods.Add((assembly, ns, classSymbol.Name, symbol.Name, isStatic));
-                    }
-                }
+                    if (!symbol.GetAttributes().Any(attr => attr.AttributeClass?.Name == "TestAttribute"))
+                        continue;
 
-                var assemblyName = compilation.AssemblyName ?? "UnknownAssembly";
-                var safeClassName = assemblyName.Replace('.', '_') + "DiscoveredTests";
-                var safeNamespace = assemblyName; // or use a transformation if you want
+                    var classSymbol = symbol.ContainingType;
+                    var ns = classSymbol.ContainingNamespace.ToDisplayString();
+                    var assembly = classSymbol.ContainingAssembly.Name;
+                    var cls = classSymbol.Name;
+                    var methodName = symbol.Name;
 
-                var sb = new StringBuilder();
-                sb.AppendLine("// Auto-generated file");
-                sb.AppendLine("using System;");
-                sb.AppendLine("using System.Runtime.CompilerServices;");
-                sb.AppendLine("using Gandalf.Core.Helpers;");
-                sb.AppendLine("using Gandalf.Core.Models;");
-                sb.AppendLine();
-                sb.AppendLine($"namespace {safeNamespace}");
-                sb.AppendLine("{");
-                sb.AppendLine($"    public static class {safeClassName}");
-                sb.AppendLine("    {");
-                sb.AppendLine($"       [ModuleInitializer]");
-                sb.AppendLine($"       public static void Initialize()");
-                sb.AppendLine("        {");
-                foreach (var (assembly, ns, cls, method, isStatic) in testMethods)
-                {
+                    // Get file location information
+                    var filePath = method.SyntaxTree.FilePath;
+                    var location = method.Identifier.GetLocation();
+                    var lineSpan = location.GetLineSpan();
+                    var startLine = lineSpan.StartLinePosition.Line + 1;
+                    var startCharacter = lineSpan.StartLinePosition.Character + 1;
+                    var endLine = lineSpan.EndLinePosition.Line + 1;
+                    var endCharacter = lineSpan.EndLinePosition.Character + 1;
+
                     var fqType = string.IsNullOrEmpty(ns) ? cls : $"{ns}.{cls}";
-                    var call = isStatic
-                        ? $"() => {fqType}.{method}()"
-                        : $"() => new {fqType}().{method}()";
-                    sb.AppendLine($"            DiscoveredTests.Register(new DiscoveredTest(\"{assembly}\", \"{ns}\", \"{cls}\", \"{method}\", {call}));");
-                }
-                sb.AppendLine("        }");
-                sb.AppendLine("    }");
-                sb.AppendLine("}");
 
-                var fileName = $"{assemblyName}.DiscoveredTests.g.cs";
-                spc.AddSource(fileName, sb.ToString());
+                    // Find all [Argument] attributes
+                    var argumentAttributes = symbol.GetAttributes()
+                        .Where(attr => attr.AttributeClass?.Name == "ArgumentAttribute")
+                        .ToList();
+
+                    var registrations = new List<string>();
+                    if (argumentAttributes.Count == 0)
+                    {
+                        // For standard tests (no parameters):
+                        var testUid = $"{ns}.{cls}.{methodName}";
+                        var call = $"() => new {fqType}().{methodName}()";
+                        registrations.Add(
+                            $"DiscoveredTests.Register(new DiscoveredTest(\"{testUid}\", \"{assembly}\", \"{ns}\", \"{cls}\", \"{methodName}\", {call}, \"{filePath}\", {startLine}, {startCharacter}, {endLine}, {endCharacter}));"
+                        );
+                    }
+                    else
+                    {
+                        // For parameterized tests:
+                        var parentUid = $"{ns}.{cls}.{methodName}";
+                        var count = 0;
+                        foreach (var argAttr in argumentAttributes)
+                        {
+                            var args = argAttr.ConstructorArguments.FirstOrDefault();
+                            var argList = args.Values.Select(v =>
+                                v.Kind == TypedConstantKind.Primitive
+                                    ? v.Value is string s ? $"\"{s}\"" : v.Value?.ToString() ?? "null"
+                                    : v.ToCSharpString()
+                            ).ToArray();
+                            var argString = string.Join(", ", argList);
+                            var call = $"() => new {fqType}().{methodName}({argString})";
+                            var childUid = $"{ns}.{cls}.{methodName}-{count}";
+
+                            registrations.Add(
+                                $"DiscoveredTests.Register(new DiscoveredTest(\"{childUid}\", \"{assembly}\", \"{ns}\", \"{cls}\", \"{methodName}\", {call}, \"{filePath}\", {startLine}, {startCharacter}, {endLine}, {endCharacter}, new object[] {{ {argString} }}, \"{parentUid}\"));"
+                            );
+
+                            count++;
+                        }
+                    }
+
+                    var safeNamespace = assembly;
+                    var safeClassName = $"{cls}_{methodName}_DiscoveredTest";
+
+                    var registrationBlock = string.Join("\n            ", registrations);
+
+                    var code =
+$@"// Auto-generated file
+using System;
+using System.Runtime.CompilerServices;
+using Gandalf.Core.Helpers;
+using Gandalf.Core.Models;
+
+namespace {safeNamespace}
+{{
+    public static class {safeClassName}
+    {{
+        [ModuleInitializer]
+        public static void Initialize()
+        {{
+            {registrationBlock}
+        }}
+    }}
+}}";
+                    var fileName = $"{assembly}.{cls}.{methodName}.DiscoveredTest.g.cs";
+                    spc.AddSource(fileName, code);
+                }
             });
         }
     }
