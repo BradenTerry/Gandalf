@@ -41,15 +41,23 @@ namespace Gandalf.Engine.SourceGenerators
                     }
                 }
 
+                var assemblyName = compilation.AssemblyName ?? "UnknownAssembly";
+                var safeClassName = assemblyName.Replace('.', '_') + "DiscoveredTests";
+                var safeNamespace = assemblyName; // or use a transformation if you want
+
                 var sb = new StringBuilder();
+                sb.AppendLine("// Auto-generated file");
                 sb.AppendLine("using System;");
-                sb.AppendLine("using System.Collections.Generic;");
+                sb.AppendLine("using System.Runtime.CompilerServices;");
+                sb.AppendLine("using Gandalf.Core.Helpers;");
                 sb.AppendLine("using Gandalf.Core.Models;");
-                sb.AppendLine("namespace Gandalf.Engine.SourceGenerators");
+                sb.AppendLine();
+                sb.AppendLine($"namespace {safeNamespace}");
                 sb.AppendLine("{");
-                sb.AppendLine("    public static class DiscoveredTests");
+                sb.AppendLine($"    public static class {safeClassName}");
                 sb.AppendLine("    {");
-                sb.AppendLine("        public static IReadOnlyList<DiscoveredTest> All { get; } = new List<DiscoveredTest>");
+                sb.AppendLine($"       [ModuleInitializer]");
+                sb.AppendLine($"       public static void Initialize()");
                 sb.AppendLine("        {");
                 foreach (var (assembly, ns, cls, method, isStatic) in testMethods)
                 {
@@ -57,13 +65,14 @@ namespace Gandalf.Engine.SourceGenerators
                     var call = isStatic
                         ? $"() => {fqType}.{method}()"
                         : $"() => new {fqType}().{method}()";
-                    sb.AppendLine($"            new DiscoveredTest(\"{assembly}\", \"{ns}\", \"{cls}\", \"{method}\", {call}),");
+                    sb.AppendLine($"            DiscoveredTests.Register(new DiscoveredTest(\"{assembly}\", \"{ns}\", \"{cls}\", \"{method}\", {call}));");
                 }
-                sb.AppendLine("        };");
+                sb.AppendLine("        }");
                 sb.AppendLine("    }");
                 sb.AppendLine("}");
 
-                spc.AddSource("DiscoveredTests.g.cs", sb.ToString());
+                var fileName = $"{assemblyName}.DiscoveredTests.g.cs";
+                spc.AddSource(fileName, sb.ToString());
             });
         }
     }

@@ -1,9 +1,6 @@
-using System.Globalization;
 using System.Reflection;
-using Gandalf.Core.Attributes;
+using Gandalf.Core.Helpers;
 using Gandalf.Core.Models;
-using Microsoft.Testing.Platform.Capabilities.TestFramework;
-using Microsoft.Testing.Platform.CommandLine;
 using Microsoft.Testing.Platform.Configurations;
 using Microsoft.Testing.Platform.Extensions.Messages;
 using Microsoft.Testing.Platform.Extensions.OutputDevice;
@@ -114,9 +111,8 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IDisposa
             await _outputDevice.DisplayAsync(this, new FormattedTextOutputDeviceData($"TestingFramework version '{Version}' running tests with parallelism of {_dopValue}") { ForegroundColor = new SystemConsoleColor() { ConsoleColor = ConsoleColor.Green } });
 
             // StringBuilder reportBody = new();
-            var tests = GetTestsMethodFromAssemblies();
             List<Task> results = new();
-            foreach (var test in tests)
+            foreach (var test in DiscoveredTests.All)
             {
                 if (runTestExecutionRequest.Filter is TestNodeUidListFilter filter)
                 {
@@ -292,8 +288,7 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IDisposa
     {
         try
         {
-            var tests = GetTestsMethodFromAssemblies();
-            foreach (var testInfo in tests)
+            foreach (var testInfo in DiscoveredTests.All)
             {
                 var testNode = new TestNode()
                 {
@@ -329,10 +324,6 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IDisposa
         {
             // testNode.Properties.Add(new TrxExceptionProperty(ex.Message, ex.StackTrace));
         }
-    }
-    private IReadOnlyList<DiscoveredTest> GetTestsMethodFromAssemblies()
-    {
-        return Gandalf.Engine.SourceGenerators.DiscoveredTests.All;
     }
 
     public Task<bool> IsEnabledAsync() => Task.FromResult(true);
