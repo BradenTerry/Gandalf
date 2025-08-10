@@ -137,8 +137,6 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
                         assertionFailedTestNode.Properties.Add(new StandardOutputProperty(asyncLocalOutput.ToString()));
 #pragma warning restore TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
-                        await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, assertionFailedTestNode));
-
                         if (testInfo.ParentUid != null)
                             await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, assertionFailedTestNode, testInfo.ParentUid));
                         else
