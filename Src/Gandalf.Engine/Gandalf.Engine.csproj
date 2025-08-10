@@ -12,9 +12,9 @@
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
   </PropertyGroup>
 
-  <!-- <ItemGroup>
+  <ItemGroup>
     <None Include="Gandalf.Engine.props" Pack="true" PackagePath="buildTransitive\" />
-  </ItemGroup> -->
+  </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Gandalf.Tests" />

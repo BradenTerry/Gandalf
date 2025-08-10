@@ -28,13 +28,13 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
         _assemblies = assemblies();
     }
 
-    public string Uid => nameof(TestingFramework);
+    public string Uid => "Gandalf";
 
-    public string Version => "1.0.0";
+    public string Version => Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
 
-    public string DisplayName => "TestingFramework";
+    public string DisplayName => "Gandalf";
 
-    public string Description => "Testing framework sample";
+    public string Description => "Gandalf testing framework";
 
     public Type[] DataTypesProduced => new[] { typeof(TestNodeUpdateMessage), typeof(SessionFileArtifact) };
 
@@ -77,7 +77,7 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
             await _outputDevice.DisplayAsync(this, new FormattedTextOutputDeviceData($"Gandalf version '{Version}' running tests") { ForegroundColor = new SystemConsoleColor() { ConsoleColor = ConsoleColor.Green } });
 
             List<Task> results = new();
-            foreach (var test in DiscoveredTests.All)
+            foreach (var test in DiscoveredTests.All.Where(test => _assemblies.Any(assembly => assembly.GetName().Name == test.Assembly)))
             {
                 if (runTestExecutionRequest.Filter is TestNodeUidListFilter filter)
                 {
@@ -133,7 +133,7 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
     {
         try
         {
-            foreach (var testInfo in DiscoveredTests.All)
+            foreach (var testInfo in DiscoveredTests.All.Where(test => _assemblies.Any(assembly => assembly.GetName().Name == test.Assembly)))
             {
                 var testNode = new TestNode()
                 {
