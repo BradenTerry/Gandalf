@@ -12,8 +12,6 @@ public static class TestingFrameworkExtensions
     public static void AddTestingFramework(this ITestApplicationBuilder builder, Func<Assembly[]> assemblies)
         => builder.RegisterTestFramework(_ => new TestingFrameworkCapabilities(),
             (capabilities, serviceProvider) => new TestingFramework(
-                // capabilities,
-                // serviceProvider.GetCommandLineOptions(),
                 serviceProvider.GetConfiguration(),
                 new Logger(),
                 serviceProvider.GetOutputDevice(),

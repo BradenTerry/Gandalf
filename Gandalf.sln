@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gandalf", "Src\Gandalf\Gand
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gandalf.Tests", "Src\Gandalf.Tests\Gandalf.Tests.csproj", "{2221A45F-A2C4-4E67-A71F-5F0ED64A5689}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gandalf.Engine.SourceGenerators", "Src\Gandalf.Engine.SourceGenerators\Gandalf.Engine.SourceGenerators.csproj", "{06A97A15-B2F2-4ADA-BBD9-9241F94E9D8B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -71,6 +73,18 @@ Global
 		{2221A45F-A2C4-4E67-A71F-5F0ED64A5689}.Release|x64.Build.0 = Release|Any CPU
 		{2221A45F-A2C4-4E67-A71F-5F0ED64A5689}.Release|x86.ActiveCfg = Release|Any CPU
 		{2221A45F-A2C4-4E67-A71F-5F0ED64A5689}.Release|x86.Build.0 = Release|Any CPU
+		{06A97A15-B2F2-4ADA-BBD9-9241F94E9D8B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{06A97A15-B2F2-4ADA-BBD9-9241F94E9D8B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{06A97A15-B2F2-4ADA-BBD9-9241F94E9D8B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{06A97A15-B2F2-4ADA-BBD9-9241F94E9D8B}.Debug|x64.Build.0 = Debug|Any CPU
+		{06A97A15-B2F2-4ADA-BBD9-9241F94E9D8B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{06A97A15-B2F2-4ADA-BBD9-9241F94E9D8B}.Debug|x86.Build.0 = Debug|Any CPU
+		{06A97A15-B2F2-4ADA-BBD9-9241F94E9D8B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{06A97A15-B2F2-4ADA-BBD9-9241F94E9D8B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{06A97A15-B2F2-4ADA-BBD9-9241F94E9D8B}.Release|x64.ActiveCfg = Release|Any CPU
+		{06A97A15-B2F2-4ADA-BBD9-9241F94E9D8B}.Release|x64.Build.0 = Release|Any CPU
+		{06A97A15-B2F2-4ADA-BBD9-9241F94E9D8B}.Release|x86.ActiveCfg = Release|Any CPU
+		{06A97A15-B2F2-4ADA-BBD9-9241F94E9D8B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -80,5 +94,6 @@ Global
 		{257A25F7-9362-484F-BE4B-99C3FD2FA17D} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{5781EBDC-5707-40EA-800C-499E9A12A919} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{2221A45F-A2C4-4E67-A71F-5F0ED64A5689} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{06A97A15-B2F2-4ADA-BBD9-9241F94E9D8B} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

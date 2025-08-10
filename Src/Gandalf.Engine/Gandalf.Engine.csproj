@@ -2,11 +2,23 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <GenerateProgramFile>false</GenerateProgramFile>
+    <!-- <GenerateProgramFile>true</GenerateProgramFile> -->
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <IsTestingPlatformApplication>true</IsTestingPlatformApplication>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="Gandalf.Engine.props" Pack="true" PackagePath="buildTransitive\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Gandalf.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Testing.Extensions.TrxReport.Abstractions" Version="1.8.1" />
@@ -16,6 +28,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Gandalf.Core\Gandalf.Core.csproj" />
+    <ProjectReference Include="..\Gandalf.Engine.SourceGenerators\Gandalf.Engine.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>

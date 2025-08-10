@@ -1,8 +1,10 @@
 using System;
 
-namespace Gandalf.Core.Attributes;
-
-public class TestAttribute : Attribute
+namespace Gandalf.Core.Attributes
 {
+    [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+    public class TestAttribute : Attribute
+    {
 
+    }
 }
