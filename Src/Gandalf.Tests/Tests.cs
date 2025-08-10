@@ -10,4 +10,12 @@ public class Tests
         await Task.Delay(500);
         // Should pass
     }
+
+    [Test]
+    [Argument(1)]
+    public async Task Test_WithParameter()
+    {
+        await Task.Delay(500);
+        // Should pass
+    }
 }
