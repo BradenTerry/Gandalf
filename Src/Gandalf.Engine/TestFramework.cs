@@ -1,4 +1,5 @@
 using System.Reflection;
+using Gandalf.Core;
 using Gandalf.Core.Helpers;
 using Gandalf.Core.Models;
 using Microsoft.Testing.Extensions.TrxReport.Abstractions;
@@ -92,9 +93,10 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
 
                 results.Add(Task.Run(async () =>
                 {
-                    var output = new StringWriter();
+                    AsyncLocalTextWriter.Current.Value = new StringWriter();
+                    var asyncLocalOutput = new AsyncLocalTextWriter();
                     var originalOut = Console.Out;
-                    Console.SetOut(output);
+                    Console.SetOut(asyncLocalOutput);
 
                     try
                     {
@@ -113,10 +115,9 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
 
                         // Add captured output as a property
 #pragma warning disable TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-                        successfulTestNode.Properties.Add(new StandardOutputProperty(output.ToString()));
+                        successfulTestNode.Properties.Add(new StandardOutputProperty(asyncLocalOutput.ToString()));
 #pragma warning restore TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
-                        await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, successfulTestNode));
                         if (testInfo.ParentUid != null)
                             await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, successfulTestNode, testInfo.ParentUid));
                         else
@@ -133,7 +134,7 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
 
                         // Add captured output even on failure
 #pragma warning disable TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-                        assertionFailedTestNode.Properties.Add(new StandardOutputProperty(output.ToString()));
+                        assertionFailedTestNode.Properties.Add(new StandardOutputProperty(asyncLocalOutput.ToString()));
 #pragma warning restore TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
                         await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, assertionFailedTestNode));
@@ -145,6 +146,7 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
                     }
                     finally
                     {
+                        AsyncLocalTextWriter.Current.Value = null;
                         Console.SetOut(originalOut);
                     }
                 }));
