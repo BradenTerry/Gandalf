@@ -143,15 +143,11 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
                 };
 
                 TestMethodIdentifierProperty testMethodIdentifierProperty = new(
-                    testInfo.FullName,
+                    testInfo.Assembly,
                     testInfo.Namespace,
-                    testInfo.Assembly, // assembly name
-                    testInfo.ClassName, // class type
+                    "", // TODO: get class type name
                     testInfo.MethodName,
-                    testInfo.Assembly, // assemblyFullName
-                    testInfo.Namespace,
-                    testInfo.ClassName,
-                    testInfo.MethodName,
+                    0, // TODO: Get MethtodArity
                     [], // parameterTypeFullNames
                     typeof(Task).FullName!);
 
