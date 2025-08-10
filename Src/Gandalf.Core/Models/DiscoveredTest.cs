@@ -1,12 +1,25 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace Gandalf.Core.Models
 {
-    public record DiscoveredTest(string Assembly, string Namespace, string ClassName, string MethodName, Func<Task> InvokeAsync)
+    public class DiscoveredTest
     {
+        public string Assembly { get; }
+        public string Namespace { get; }
+        public string ClassName { get; }
+        public string MethodName { get; }
+        public Func<Task> InvokeAsync { get; }
+
+        public DiscoveredTest(string assembly, string ns, string className, string methodName, Func<Task> invokeAsync)
+        {
+            Assembly = assembly;
+            Namespace = ns;
+            ClassName = className;
+            MethodName = methodName;
+            InvokeAsync = invokeAsync;
+        }
+
         public string FullName => $"{Namespace}.{ClassName}.{MethodName}";
     }
 }
