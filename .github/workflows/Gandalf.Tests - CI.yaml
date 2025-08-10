@@ -1,4 +1,4 @@
-name: .NET Test
+name: Gandalf.Tests - CI
 
 on:
   push:
@@ -11,24 +11,12 @@ on:
       - '.github/workflows/Gandalf.Tests - CI.yaml'
   pull_request:
     paths:
-      - '/Src/Gandalf/**'
-      - '/Src/Gandalf.Core/**'
-      - '/Src/Gandalf.Engine/**'
-      - '/Src/Gandalf.Engine.SourceGenerators/**'
       - 'Src/Gandalf/**'
       - 'Src/Gandalf.Core/**'
       - 'Src/Gandalf.Engine/**'
       - 'Src/Gandalf.Engine.SourceGenerators/**'
       - 'Src/Gandalf.Tests/**'
-      - '.github/workflows/test.yml'
-  pull_request:
-    paths:
-      - 'Src/Gandalf/**'
-      - 'Src/Gandalf.Core/**'
-      - 'Src/Gandalf.Engine/**'
-      - 'Src/Gandalf.Engine.SourceGenerators/**'
-      - 'Src/Gandalf.Tests/**'
-      - '.github/workflows/test.yml'
+      - '.github/workflows/Gandalf.Tests - CI.yaml'
 
 jobs:
   build-and-test:
