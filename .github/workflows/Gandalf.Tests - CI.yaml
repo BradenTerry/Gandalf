@@ -8,7 +8,7 @@ on:
       - '/Src/Gandalf.Engine/**'
       - '/Src/Gandalf.Engine.SourceGenerators/**'
       - '/Src/Gandalf.Tests/**'
-      - '.github/workflows/test.yml'
+      - '.github/workflows/Gandalf.Tests - CI.yaml'
   pull_request:
     paths:
       - '/Src/Gandalf/**'
