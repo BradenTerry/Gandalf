@@ -22,7 +22,7 @@ testApplicationBuilder.TestHost.AddDataConsumer(serviceProvider
     => new DisplayDataConsumer(serviceProvider.GetOutputDevice()));
 
 // Out-of-process extensions
-testApplicationBuilder.TestHostControllers.AddEnvironmentVariableProvider(_6
+testApplicationBuilder.TestHostControllers.AddEnvironmentVariableProvider(_
     => new SetEnvironmentVariableForTestHost());
 testApplicationBuilder.TestHostControllers.AddProcessLifetimeHandler(serviceProvider =>
     new MonitorTestHost(serviceProvider.GetOutputDevice()));
