@@ -162,15 +162,19 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IDisposa
                             // }
                             // else
                             // {
+                            var startTime = DateTimeOffset.UtcNow;
                             await test.InvokeAsync();
+                            var endTime = DateTimeOffset.UtcNow;
                             // }
 
                             var successfulTestNode = new TestNode()
                             {
                                 Uid = test.FullName,
                                 DisplayName = test.MethodName,
-                                Properties = new PropertyBag(PassedTestNodeStateProperty.CachedInstance),
+                                Properties = new PropertyBag(PassedTestNodeStateProperty.CachedInstance)
                             };
+
+                            successfulTestNode.Properties.Add(new TimingProperty(new TimingInfo(startTime, endTime, endTime - startTime)));
 
                             // if (_capabilities.TrxCapability.IsTrxEnabled)
                             // {
