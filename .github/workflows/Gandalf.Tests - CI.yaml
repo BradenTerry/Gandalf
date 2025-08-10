@@ -15,7 +15,19 @@ on:
       - '/Src/Gandalf.Core/**'
       - '/Src/Gandalf.Engine/**'
       - '/Src/Gandalf.Engine.SourceGenerators/**'
-      - '/Src/Gandalf.Tests/**'
+      - 'Src/Gandalf/**'
+      - 'Src/Gandalf.Core/**'
+      - 'Src/Gandalf.Engine/**'
+      - 'Src/Gandalf.Engine.SourceGenerators/**'
+      - 'Src/Gandalf.Tests/**'
+      - '.github/workflows/test.yml'
+  pull_request:
+    paths:
+      - 'Src/Gandalf/**'
+      - 'Src/Gandalf.Core/**'
+      - 'Src/Gandalf.Engine/**'
+      - 'Src/Gandalf.Engine.SourceGenerators/**'
+      - 'Src/Gandalf.Tests/**'
       - '.github/workflows/test.yml'
 
 jobs:

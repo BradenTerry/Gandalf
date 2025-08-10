@@ -43,7 +43,7 @@ internal sealed class TestingFrameworkCommandLineOptions : ICommandLineOptionsPr
         bool generateReportEnabled = commandLineOptions.IsOptionSet(GenerateReportOption);
         bool reportFileName = commandLineOptions.TryGetOptionArgumentList(ReportFilenameOption, out string[]? _);
 
-        return (generateReportEnabled || reportFileName) && !(generateReportEnabled && reportFileName)
+        return (generateReportEnabled && !reportFileName) || (!generateReportEnabled && reportFileName)
             ? ValidationResult.InvalidTask("--generatereport and --reportfilename must be specified together")
             : ValidationResult.ValidTask;
     }
