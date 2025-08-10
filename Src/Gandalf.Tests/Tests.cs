@@ -5,7 +5,8 @@ using Gandalf.Core.Attributes;
 public class Tests
 {
     [Test]
-    public Task SimpleTest()
+    [Argument(1)]
+    public Task SimpleTest(int a)
     {
         return Task.CompletedTask;
     }

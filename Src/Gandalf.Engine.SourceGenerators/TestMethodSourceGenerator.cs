@@ -32,7 +32,7 @@ namespace Gandalf.Engine.SourceGenerators
                     if (symbol == null)
                         continue;
 
-                    if (!symbol.GetAttributes().Any(attr => attr.AttributeClass?.Name == "TestAttribute"))
+                    if (!symbol.GetAttributes().Any(attr => attr.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.TestAttribute"))
                         continue;
 
                     var classSymbol = symbol.ContainingType;
