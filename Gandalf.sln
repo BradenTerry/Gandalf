@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gandalf.Tests", "Src\Gandal
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gandalf.Engine.SourceGenerators", "Src\Gandalf.Engine.SourceGenerators\Gandalf.Engine.SourceGenerators.csproj", "{06A97A15-B2F2-4ADA-BBD9-9241F94E9D8B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gandalf.Analyzers", "Src\Gandalf.Analyzers\Gandalf.Analyzers.csproj", "{31DBC51E-EC2C-4F53-9B2C-BA8AD2A67D3E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -85,6 +87,18 @@ Global
 		{06A97A15-B2F2-4ADA-BBD9-9241F94E9D8B}.Release|x64.Build.0 = Release|Any CPU
 		{06A97A15-B2F2-4ADA-BBD9-9241F94E9D8B}.Release|x86.ActiveCfg = Release|Any CPU
 		{06A97A15-B2F2-4ADA-BBD9-9241F94E9D8B}.Release|x86.Build.0 = Release|Any CPU
+		{31DBC51E-EC2C-4F53-9B2C-BA8AD2A67D3E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{31DBC51E-EC2C-4F53-9B2C-BA8AD2A67D3E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{31DBC51E-EC2C-4F53-9B2C-BA8AD2A67D3E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{31DBC51E-EC2C-4F53-9B2C-BA8AD2A67D3E}.Debug|x64.Build.0 = Debug|Any CPU
+		{31DBC51E-EC2C-4F53-9B2C-BA8AD2A67D3E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{31DBC51E-EC2C-4F53-9B2C-BA8AD2A67D3E}.Debug|x86.Build.0 = Debug|Any CPU
+		{31DBC51E-EC2C-4F53-9B2C-BA8AD2A67D3E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{31DBC51E-EC2C-4F53-9B2C-BA8AD2A67D3E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{31DBC51E-EC2C-4F53-9B2C-BA8AD2A67D3E}.Release|x64.ActiveCfg = Release|Any CPU
+		{31DBC51E-EC2C-4F53-9B2C-BA8AD2A67D3E}.Release|x64.Build.0 = Release|Any CPU
+		{31DBC51E-EC2C-4F53-9B2C-BA8AD2A67D3E}.Release|x86.ActiveCfg = Release|Any CPU
+		{31DBC51E-EC2C-4F53-9B2C-BA8AD2A67D3E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -95,5 +109,6 @@ Global
 		{5781EBDC-5707-40EA-800C-499E9A12A919} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{2221A45F-A2C4-4E67-A71F-5F0ED64A5689} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{06A97A15-B2F2-4ADA-BBD9-9241F94E9D8B} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{31DBC51E-EC2C-4F53-9B2C-BA8AD2A67D3E} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal
