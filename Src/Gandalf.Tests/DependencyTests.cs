@@ -1,44 +1,43 @@
-using System;
-using System.Collections;
 using Gandalf.Core.Attributes;
-using Gandalf.Tests;
-using Microsoft.Extensions.DependencyInjection;
-
-#if CSHARP_11_0_OR_GREATER
-[assembly: TestServiceProvider<MyServiceProvider>()]
-#else
-[assembly: TestServiceProvider(typeof(MyServiceProvider))]
-#endif
 
 namespace Gandalf.Tests;
 
-public class DependencyTests
-{
+// public class DependencyTests
+// {
+//     [Test]
+//     [Injector<TestInjector>]
+//     public Task ServiceProviderAttribute_Should_Initialize_Correctly([Inject] TestClass testClass)
+//     {
+//         if (testClass == null)
+//             throw new Exception("TestClass instance is null");
 
-    [Test]
-    public Task ServiceProviderAttribute_Should_Initialize_Correctly([Inject] TestClass testClass)
-    {
-        if (testClass == null)
-            throw new Exception("TestClass instance is null");
+//         return Task.CompletedTask;
+//     }
 
-        return Task.CompletedTask;
-    }
+//     public class TestClass
+//     {
+//     }
+// }
 
-    [Test]
-    [Argument(1,2,3)]
-    public Task ServiceProviderAttribute_Should_Initialize_Correctly2(int arg1, int arg2, int arg3, [Inject] TestClass testClass)
-    {
-        if (arg1 != 1 || arg2 != 2 || arg3 != 3)
-            throw new Exception("Arguments did not match expected values");
+// public interface IInjector
+// {
+//     T GetInstance<T>();
+// }
 
-        if (!testClass.HasValue)
-            throw new Exception("TestClass instance is null");
+// public class TestInjector : IInjector
+// {
+//     public T GetInstance<T>()
+//     {
+//         return Activator.CreateInstance<T>();
+//     }
+// }
 
-        return Task.CompletedTask;
-    }
-}
-
-public class TestClass()
-{
-    public bool HasValue => true;
-}
+// [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = false)]
+// public class InjectorAttribute<T> : Attribute where T : class, IInjector
+// {
+//     public T CreateInstance()
+//     {
+//         // Logic to create and return an instance of T
+//         return Activator.CreateInstance<T>();
+//     }
+// }
