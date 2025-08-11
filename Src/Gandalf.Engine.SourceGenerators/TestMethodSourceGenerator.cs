@@ -60,11 +60,33 @@ namespace Gandalf.Engine.SourceGenerators
                     var registrations = new List<string>();
                     if (argumentAttributes.Count == 0)
                     {
-                        // For standard tests (no parameters):
+                        // For standard tests (no [Argument] attributes)
                         var testUid = $"{ns}.{cls}.{methodName}";
-                        var call = $"() => new {fqType}().{methodName}()";
+
+                        // Build call arguments, handling [Inject] parameters
+                        var callArguments = new List<string>();
+                        foreach (var param in symbol.Parameters)
+                        {
+                            bool isInject = param.GetAttributes()
+                                .Any(attr => attr.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.InjectAttribute");
+
+                            if (isInject)
+                            {
+                                var paramType = param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                                callArguments.Add($"({param.Type.ToDisplayString()})Gandalf.Engine.Helpers.TestServiceProvider.GetAssemblyServiceProvider().GetService(typeof({paramType}))");
+                            }
+                            else
+                            {
+                                // No [Argument] attribute and not [Inject]: use default value or null
+                                callArguments.Add(param.HasExplicitDefaultValue
+                                    ? (param.ExplicitDefaultValue is string s ? $"\"{s}\"" : param.ExplicitDefaultValue?.ToString() ?? "null")
+                                    : "default");
+                            }
+                        }
+                        var callArgsString = string.Join(", ", callArguments);
+                        var c = $"() => new {fqType}().{methodName}({callArgsString})";
                         registrations.Add(
-                            $"DiscoveredTests.Register(new DiscoveredTest(\"{testUid}\", \"{assembly}\", \"{ns}\", \"{cls}\", \"{methodName}\", {call}, \"{filePath}\", {startLine}, {startCharacter}, {endLine}, {endCharacter}));"
+                            $"DiscoveredTests.Register(new DiscoveredTest(\"{testUid}\", \"{assembly}\", \"{ns}\", \"{cls}\", \"{methodName}\", {c}, \"{filePath}\", {startLine}, {startCharacter}, {endLine}, {endCharacter}));"
                         );
                     }
                     else
@@ -72,6 +94,10 @@ namespace Gandalf.Engine.SourceGenerators
                         // For parameterized tests:
                         var parentUid = $"{ns}.{cls}.{methodName}";
                         var count = 0;
+                        
+                        // Get all parameters of the method
+                        var paramterList = symbol.Parameters.ToList();
+                        
                         foreach (var argAttr in argumentAttributes)
                         {
                             var args = argAttr.ConstructorArguments.FirstOrDefault();
@@ -80,12 +106,43 @@ namespace Gandalf.Engine.SourceGenerators
                                     ? v.Value is string s ? $"\"{s}\"" : v.Value?.ToString() ?? "null"
                                     : v.ToCSharpString()
                             ).ToArray();
-                            var argString = string.Join(", ", argList);
-                            var call = $"() => new {fqType}().{methodName}({argString})";
+                            
+                            // Build call arguments, handling [Inject] parameters differently
+                            var callArguments = new List<string>();
+                            int argIndex = 0;
+                            
+                            foreach (var param in paramterList)
+                            {
+                                bool isInject = param.GetAttributes()
+                                    .Any(attr => attr.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.InjectAttribute");
+
+                                if (isInject)
+                                {
+                                    // Use TestServiceProvider for [Inject] parameters
+                                    var paramType = param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                                    callArguments.Add($"({param.Type.ToDisplayString()})Gandalf.Engine.Helpers.TestServiceProvider.GetAssemblyServiceProvider().GetService(typeof({paramType}))");
+                                }
+                                else
+                                {
+                                    callArguments.Add(argList[argIndex]);
+                                    // Use argument value for non-injected parameters
+                                    if (argIndex < argList.Length)
+                                    {
+
+                                    }
+                                        argIndex++;
+                                }
+                            }
+                            
+                            var callArgsString = string.Join(", ", callArguments);
+                            var c = $"() => new {fqType}().{methodName}({callArgsString})";
                             var childUid = $"{ns}.{cls}.{methodName}-{count}";
+                            
+                            // Use the original argString for the objects array to preserve the test parameters
+                            var argString = string.Join(", ", argList);
 
                             registrations.Add(
-                                $"DiscoveredTests.Register(new DiscoveredTest(\"{childUid}\", \"{assembly}\", \"{ns}\", \"{cls}\", \"{methodName}\", {call}, \"{filePath}\", {startLine}, {startCharacter}, {endLine}, {endCharacter}, new object[] {{ {argString} }}, \"{parentUid}\"));"
+                                $"DiscoveredTests.Register(new DiscoveredTest(\"{childUid}\", \"{assembly}\", \"{ns}\", \"{cls}\", \"{methodName}\", {c}, \"{filePath}\", {startLine}, {startCharacter}, {endLine}, {endCharacter}, new object[] {{ {argString} }}, \"{parentUid}\"));"
                             );
 
                             count++;
@@ -98,7 +155,7 @@ namespace Gandalf.Engine.SourceGenerators
                     var registrationBlock = string.Join("\n            ", registrations);
 
                     var code =
-$@"// Auto-generated file
+$@"// <auto-generated />
 using System;
 using System.Runtime.CompilerServices;
 using Gandalf.Core.Helpers;

@@ -3,7 +3,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 
-namespace Gandalf.Core
+namespace Gandalf.Core.Helpers
 {
     public class AsyncLocalTextWriter : TextWriter
     {
