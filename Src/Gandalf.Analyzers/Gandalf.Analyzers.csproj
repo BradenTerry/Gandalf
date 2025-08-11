@@ -10,8 +10,4 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" PrivateAssets="all" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Analyzers/" />
-  </ItemGroup>
-
 </Project>

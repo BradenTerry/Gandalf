@@ -153,12 +153,7 @@ namespace {safeNamespace}
                 bool isInject = param.GetAttributes()
                     .Any(attr => attr.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.InjectAttribute");
 
-                if (isInject)
-                {
-                    // var paramType = param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                    // callArguments.Add($"({param.Type.ToDisplayString()})Gandalf.Engine.Helpers.TestServiceProvider.GetAssemblyServiceProvider().GetService(typeof({paramType}))");
-                }
-                else if (argList != null)
+                if (argList != null)
                 {
                     callArguments.Add(argList[argIndex]);
                     argIndex++;

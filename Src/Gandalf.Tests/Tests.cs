@@ -33,4 +33,10 @@ public class Tests
 
         return Task.CompletedTask;
     }
+
+    [Test]
+    public async Task SimpleTest_WithDelay()
+    {
+        await Task.Delay(100);
+    }
 }
