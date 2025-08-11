@@ -98,11 +98,19 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
                     var originalOut = Console.Out;
                     Console.SetOut(asyncLocalOutput);
 
+                    var startTime = DateTimeOffset.UtcNow;
+                    DateTimeOffset? endTime = null;
+
                     try
                     {
-                        var startTime = DateTimeOffset.UtcNow;
-                        await testInfo.InvokeAsync();
-                        var endTime = DateTimeOffset.UtcNow;
+                        try
+                        {
+                            await testInfo.InvokeAsync();
+                        }
+                        finally
+                        {
+                            endTime = DateTimeOffset.UtcNow;
+                        }
 
                         var successfulTestNode = new TestNode()
                         {
@@ -111,7 +119,7 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
                             Properties = new PropertyBag(PassedTestNodeStateProperty.CachedInstance)
                         };
 
-                        successfulTestNode.Properties.Add(new TimingProperty(new TimingInfo(startTime, endTime, endTime - startTime)));
+                        successfulTestNode.Properties.Add(new TimingProperty(new TimingInfo(startTime, endTime.Value, endTime.Value - startTime)));
 
                         // Add captured output as a property
 #pragma warning disable TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
@@ -127,10 +135,13 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
                     {
                         var assertionFailedTestNode = new TestNode
                         {
-                            Uid = testInfo.FullName,
+                            Uid = testInfo.Uid,
                             DisplayName = testInfo.MethodName,
-                            Properties = new PropertyBag(new FailedTestNodeStateProperty(ex)),
+                            Properties = new PropertyBag(new FailedTestNodeStateProperty(ex))
                         };
+
+                        assertionFailedTestNode.Properties.Add(new TimingProperty(new TimingInfo(startTime, endTime!.Value, endTime.Value - startTime)));
+
 
                         // Add captured output even on failure
 #pragma warning disable TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
