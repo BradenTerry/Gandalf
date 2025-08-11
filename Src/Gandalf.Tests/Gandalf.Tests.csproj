@@ -13,15 +13,18 @@
   <ItemGroup>
     <ProjectReference Include="../Gandalf.Core/Gandalf.Core.csproj" />
     <ProjectReference Include="../Gandalf.Engine/Gandalf.Engine.csproj" />
-    <ProjectReference Include="../Gandalf.Engine.SourceGenerators/Gandalf.Engine.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <ProjectReference Include="..\Gandalf.Analyzers\Gandalf.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference
+      Include="../Gandalf.Engine.SourceGenerators/Gandalf.Engine.SourceGenerators.csproj"
+      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
-<ItemGroup>
-  <Compile Include="..\Gandalf.Engine\Program.cs" Link="Program.cs" />
-</ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gandalf.Analyzers\Gandalf.Analyzers.csproj"
+      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Gandalf.Engine\Program.cs" Link="Program.cs" />
+  </ItemGroup>
 
 </Project>

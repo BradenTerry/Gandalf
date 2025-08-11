@@ -7,7 +7,7 @@ namespace Gandalf.Core.Helpers
     public static partial class DiscoveredTests
     {
         private readonly static List<DiscoveredTest> _allTests = new List<DiscoveredTest>();
-        public static IReadOnlyList<DiscoveredTest> All => _allTests.AsReadOnly();
+        internal static IReadOnlyList<DiscoveredTest> All => _allTests.AsReadOnly();
 
         public static void Register(DiscoveredTest test)
         {

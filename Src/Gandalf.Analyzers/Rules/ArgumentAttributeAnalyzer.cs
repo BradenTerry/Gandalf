@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -11,8 +12,8 @@ namespace Gandalf.Analyzers
     {
         public const string DiagnosticId = "GANDALF001";
         private static readonly LocalizableString Title = "Argument count mismatch";
-        private static readonly LocalizableString MessageFormat = "The number of arguments in [Argument] ({0}) does not match the number of method parameters ({1})";
-        private static readonly LocalizableString Description = "The number of arguments in the Argument attribute must match the method's parameter count.";
+        private static readonly LocalizableString MessageFormat = "The number of arguments in [Argument] ({0}) does not match the number of method parameters excluding [Inject] parameters ({1})";
+        private static readonly LocalizableString Description = "The number of arguments in the Argument attribute must match the number of method parameters, excluding those marked with [Inject].";
         private const string Category = "Usage";
 
         private static DiagnosticDescriptor Rule = new DiagnosticDescriptor(
@@ -35,6 +36,16 @@ namespace Gandalf.Analyzers
             if (methodSymbol == null)
                 return;
 
+            // Count only parameters that do NOT have [Inject] attribute
+            int paramCount = 0;
+            foreach (var param in methodSymbol.Parameters)
+            {
+                bool hasInject = param.GetAttributes()
+                    .Any(attr => attr.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.InjectAttribute");
+                if (!hasInject)
+                    paramCount++;
+            }
+
             foreach (var attrList in methodDecl.AttributeLists)
             {
                 foreach (var attr in attrList.Attributes)
@@ -49,7 +60,6 @@ namespace Gandalf.Analyzers
 
                     // Count arguments in the attribute
                     int argCount = attr.ArgumentList?.Arguments.Count ?? 0;
-                    int paramCount = methodSymbol.Parameters.Length;
 
                     if (argCount != paramCount)
                     {
