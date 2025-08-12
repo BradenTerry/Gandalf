@@ -15,14 +15,13 @@ public class BasicTests
     [Test]
     [Argument(1, 2, 3)]
     [Argument(3, 4, 7)]
-    public async Task SimpleTest_WithParameter_Ints(int val1, int val2, int result)
+    public Task SimpleTest_WithParameter_Ints(int val1, int val2, int result)
     {
         Console.WriteLine($"Testing addition: {val1} + {val2} = {result}");
         if (val1 + val2 != result)
             throw new Exception("Test failed");
 
-
-        await CurrentTest.Context.TextWriter.WriteLineAsync("Test");
+        return Task.CompletedTask;
     }
 
     [Test]
