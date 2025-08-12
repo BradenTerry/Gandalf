@@ -128,3 +128,7 @@ public class DependencyInjectionTests
         return Task.CompletedTask;
     }
 }
+public class TestClass()
+{
+    
+}

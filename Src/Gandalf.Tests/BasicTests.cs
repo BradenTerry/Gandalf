@@ -41,7 +41,3 @@ public class BasicTests
         await Task.Delay(100);
     }
 }
-public class TestClass()
-{
-    
-}
