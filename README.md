@@ -1,123 +1,83 @@
-# 🧙‍♂️ Gandalf Testing Framework
+# 🧙‍♂️ Gandalf - The Magical .NET Test Framework
 
-Welcome to **Gandalf** — a modern, source-generator-powered .NET testing framework designed for speed, clarity, and extensibility.
+> "You shall not pass... unless your tests do!"
 
----
+## Welcome to Gandalf!
 
-## ✨ Features
+Gandalf is not your average .NET test framework. It's lightweight, fast, and powered by C# source generators that automatically discover and register your test methods—so you can focus on writing spells (uh, tests), not boilerplate.
 
-- **Source Generator Test Discovery**  
-  Tests are discovered at compile time for lightning-fast startup and IDE integration.
+✨ **Features:**
+- 🪄 Zero-boilerplate test discovery
+- 🧩 Attribute-based test magic ([see all attributes here](Docs/attributes.md))
+- 🧪 Dependency injection with lifetimes (Transient, Scoped, Singleton)
+- 🚀 Blazing fast test runs
+- 🧹 Roslyn analyzers to keep your code clean
 
-- **Custom Attributes for Test Authoring**  
-  Write expressive, parameterized tests using simple attributes.
+## Getting Started
 
-- **Parallel-safe Output Capture**  
-  Each test's output is isolated, even when running in parallel.
+### Prerequisites
+- .NET SDK 6.0 or later
+- Visual Studio 2022 or JetBrains Rider
 
----
+### Build & Test in 3 Easy Steps
 
-## 🚀 Quick Start
+```bash
+# 1. Restore your magical NuGet packages
+$ dotnet restore Gandalf.sln
 
-1. **Mark your test methods with `[Test]`:**
+# 2. Build the solution (wave your staff)
+$ dotnet build Gandalf.sln
 
-    ```csharp
-    using Gandalf.Core.Attributes;
+# 3. Run the tests (let the magic happen)
+$ dotnet test Src/Gandalf.Tests/Gandalf.Tests.csproj
+```
 
-    public class MathTests
-    {
-        [Test]
-        public void Addition_Works()
-        {
-            Console.WriteLine("Running addition test!");
-            Assert.Equal(2, 1 + 1);
-        }
-    }
-    ```
+## Project Map
 
-2. **Parameterize tests with `[Argument]`:**
+- **Gandalf.Core**: Core attributes, models, and helpers
+- **Gandalf.Engine**: The test runner and execution engine
+- **Gandalf.Engine.SourceGenerators**: Source generators for test discovery
+- **Gandalf.Analyzers**: Roslyn analyzers for code quality
 
-    ```csharp
-    public class MathTests
-    {
-        [Test]
-        [Argument(1, 2)]
-        [Argument(3, 4)]
-        public void Add(int a, int b)
-        {
-            Console.WriteLine($"Adding {a} + {b}");
-            Assert.True(a + b > 0);
-        }
-    }
-    ```
+Want to see all the magical attributes you can use? [Check out the Attribute Reference!](Docs/attributes.md)
 
----
+## How Does It Work?
 
-## 🏷️ Attribute Reference
+1. **Source Generators**: Find your tests and wire them up—automagically.
+2. **[Test] Attribute**: Mark your methods, and Gandalf will find them.
+3. **[Inject] Attribute**: Add dependencies to your tests with DI (supports Transient, Scoped, Singleton).
 
-### `[Test]`
-
-Marks a method as a test case to be discovered and run by Gandalf.
+## Example: Cast a Test Spell
 
 ```csharp
-[Test]
-public void MyTest() { ... }
+public class MyTests
+{
+    [Inject(InstanceType.Singleton)]
+    public required MyDependency Dependency { get; init; }
+
+    [Test]
+    public async Task MyTest()
+    {
+        // Test implementation
+        await Task.Delay(10);
+        Assert.IsTrue(true);
+    }
+
+    [Test]
+    [Argument(1, 2, 3)]
+    [Argument(4, 5, 9)]
+    public async Task ParameterizedTest(int a, int b, int expected)
+    {
+        await Task.Delay(10); // Simulate async work
+        Assert.AreEqual(expected, a + b);
+    }
+}
 ```
 
-- Can be applied to any public method.
-- Methods can be async or sync.
+## Contributing
+
+Pull requests, issues, and magical suggestions are welcome! Help Gandalf become the most powerful test wizard in .NET land.
 
 ---
 
-### `[Argument]`
-
-Defines a set of arguments for a parameterized test method.
-
-```csharp
-[Test]
-[Argument(1, 2)]
-[Argument(3, 4)]
-public void Add(int a, int b) { ... }
-```
-
-- Each `[Argument(...)]` creates a separate test case with the specified parameters.
-- Arguments are passed in order to the test method.
-
----
-
-## 🗂️ Project Structure
-
-```
-Src/
-  Gandalf.Core/           # Core attributes and helpers
-  Gandalf.Engine/         # Test framework implementation
-  Gandalf.Engine.SourceGenerators/ # Source generator for test discovery
-  Gandalf.Tests/          # Example and user tests
-.github/
-  workflows/              # CI configuration
-  copilot-instructions.md # Copilot agent onboarding
-README.md                 # This file
-```
-
----
-
-## 🛠️ Build & Test
-
-- **Restore:**  
-  `dotnet restore`
-- **Build:**  
-  `dotnet build`
-- **Test:**  
-  `dotnet test Src/Gandalf.Tests/Gandalf.Tests.csproj`
-
----
-
-## 🤝 Contributing
-
-Pull requests are welcome! Please see `.github/copilot-instructions.md` for agent onboarding and contribution guidelines.
-
----
-
-## 🧙‍♂️ You Shall Not Pass... Without Tests!
-
-Happy testing with Gandalf!
+🧙‍♂️ **May your tests always pass, and your bugs be forever banished!**
