@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Threading.Tasks.Dataflow;
 using Gandalf.Core;
 using Gandalf.Core.Helpers;
 using Gandalf.Core.Models;
@@ -11,16 +12,16 @@ using Microsoft.Testing.Platform.Logging;
 using Microsoft.Testing.Platform.OutputDevice;
 using Microsoft.Testing.Platform.Requests;
 
-internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputDeviceDataProducer
+internal sealed class GandalfTestingFramework : ITestFramework, IDataProducer, IOutputDeviceDataProducer
 {
     private readonly IConfiguration _configuration;
-    private readonly ILogger<TestingFramework> _logger;
+    private readonly ILogger<GandalfTestingFramework> _logger;
     private readonly IOutputDevice _outputDevice;
     private readonly Assembly[] _assemblies;
 
-    public TestingFramework(
+    public GandalfTestingFramework(
         IConfiguration configuration,
-        ILogger<TestingFramework> logger,
+        ILogger<GandalfTestingFramework> logger,
         IOutputDevice outputDevice,
         Func<Assembly[]> assemblies)
     {
@@ -74,33 +75,26 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
 
     private async Task HandleTestExecutionAsync(ExecuteRequestContext context, RunTestExecutionRequest runTestExecutionRequest)
     {
-        try
-        {
             await _outputDevice.DisplayAsync(this, new FormattedTextOutputDeviceData($"Gandalf version '{Version}' running tests") { ForegroundColor = new SystemConsoleColor() { ConsoleColor = ConsoleColor.Green } });
 
-            List<Task> results = new();
-            var testsToRun = DiscoveredTests.All.Where(test => _assemblies.Any(assembly => assembly.GetName().Name == test.Assembly)).ToList();
-            await _outputDevice.DisplayAsync(this, new FormattedTextOutputDeviceData($"Found {testsToRun.Count} tests to run.") { ForegroundColor = new SystemConsoleColor() { ConsoleColor = ConsoleColor.Green } });
-            foreach (var testInfo in testsToRun)
+            var actionBlock = new ActionBlock<DiscoveredTest>(async test =>
             {
                 if (runTestExecutionRequest.Filter is TestNodeUidListFilter filter)
                 {
-                    if (!filter.TestNodeUids.Any(testId => testId == testInfo.Uid))
+                    if (!filter.TestNodeUids.Any(testId => testId == test.Uid))
                     {
-                        continue;
+                        return;
                     }
                 }
 
-                results.Add(Task.Run(async () =>
-                {
-                    AsyncLocalTextWriter.Current.Value = new StringWriter();
+                AsyncLocalTextWriter.Current.Value = new StringWriter();
                     var asyncLocalOutput = new AsyncLocalTextWriter();
                     var originalOut = Console.Out;
                     Console.SetOut(asyncLocalOutput);
                     var testContext = new TestContext(
-                        testInfo.Uid,
-                        testInfo.MethodName,
-                        testInfo.Assembly,
+                        test.Uid,
+                        test.MethodName,
+                        test.Assembly,
                         asyncLocalOutput);
 
                     CurrentTest.TestContext.Value = testContext;
@@ -109,28 +103,28 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
 
                     var runningTestNode = new TestNode
                     {
-                        Uid = testInfo.Uid,
-                        DisplayName = testInfo.MethodName
+                        Uid = test.Uid,
+                        DisplayName = test.MethodName
                     };
 
                     // Notify the test explorer that the test is running
                     runningTestNode.Properties.Add(new InProgressTestNodeStateProperty());
-                    if (testInfo.ParentUid != null)
-                        await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, runningTestNode, testInfo.ParentUid));
+                    if (test.ParentUid != null)
+                        await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, runningTestNode, test.ParentUid));
                     else
                         await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, runningTestNode));
 
                     var testNode = new TestNode
                     {
-                        Uid = testInfo.Uid,
-                        DisplayName = testInfo.MethodName
+                        Uid = test.Uid,
+                        DisplayName = test.MethodName
                     };
 
                     try
                     {
                         try
                         {
-                            await testInfo.InvokeAsync();
+                            await test.InvokeAsync();
                         }
                         finally
                         {
@@ -145,14 +139,14 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
                         testNode.Properties.Add(new StandardOutputProperty(asyncLocalOutput.ToString()));
 #pragma warning restore TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
-                        if (testInfo.ParentUid != null)
-                            await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, testNode, testInfo.ParentUid));
+                        if (test.ParentUid != null)
+                            await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, testNode, test.ParentUid));
                         else
                             await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, testNode));
                     }
                     catch (Exception ex)
                     {
-                        testNode.Properties.Add(new FailedTestNodeStateProperty());
+                        testNode.Properties.Add(new FailedTestNodeStateProperty(ex));
                         testNode.Properties.Add(new TimingProperty(new TimingInfo(startTime, endTime!.Value, endTime.Value - startTime)));
 
                         // Add captured output even on failure
@@ -160,8 +154,8 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
                         testNode.Properties.Add(new StandardOutputProperty(asyncLocalOutput.ToString()));
 #pragma warning restore TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
-                        if (testInfo.ParentUid != null)
-                            await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, testNode, testInfo.ParentUid));
+                        if (test.ParentUid != null)
+                            await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, testNode, test.ParentUid));
                         else
                             await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, testNode));
                     }
@@ -171,10 +165,17 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
                         AsyncLocalTextWriter.Current.Value = null;
                         Console.SetOut(originalOut);
                     }
-                }));
-            }
+            });
 
-            await Task.WhenAll(results);
+        try
+        {
+            var testsToRun = DiscoveredTests.All.Where(test => _assemblies.Any(assembly => assembly.GetName().Name == test.Assembly)).ToList();
+            await _outputDevice.DisplayAsync(this, new FormattedTextOutputDeviceData($"Found {testsToRun.Count} tests to run.") { ForegroundColor = new SystemConsoleColor() { ConsoleColor = ConsoleColor.Green } });
+            foreach (var testInfo in testsToRun)
+                await actionBlock.SendAsync(testInfo);
+
+            actionBlock.Complete();
+            await actionBlock.Completion;
         }
         finally
         {

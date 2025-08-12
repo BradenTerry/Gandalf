@@ -11,7 +11,7 @@ public static class TestingFrameworkExtensions
 {
     public static void AddTestingFramework(this ITestApplicationBuilder builder, Func<Assembly[]> assemblies)
         => builder.RegisterTestFramework(_ => new TestingFrameworkCapabilities(),
-            (capabilities, serviceProvider) => new TestingFramework(
+            (capabilities, serviceProvider) => new GandalfTestingFramework(
                 serviceProvider.GetConfiguration(),
                 new Logger(),
                 serviceProvider.GetOutputDevice(),
@@ -23,7 +23,7 @@ public class TestingFrameworkCapabilities : ITestFrameworkCapabilities
     public IReadOnlyCollection<ITestFrameworkCapability> Capabilities => [];
 }
 
-public class Logger : ILogger<TestingFramework>
+public class Logger : ILogger<GandalfTestingFramework>
 {
     public bool IsEnabled(LogLevel logLevel)
     {

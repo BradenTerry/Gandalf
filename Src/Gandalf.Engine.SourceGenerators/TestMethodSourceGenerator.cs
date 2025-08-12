@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -25,39 +25,95 @@ namespace Gandalf.Engine.SourceGenerators
             {
                 var (compilation, methods) = source;
 
-                foreach (var method in methods)
+                // Group methods by class
+                var methodsByClass = methods
+                    .Select(m => (Method: m, Symbol: compilation.GetSemanticModel(m.SyntaxTree).GetDeclaredSymbol(m)))
+                    .Where(t => t.Symbol != null && HasTestAttribute(t.Symbol))
+                    .GroupBy(t => t.Symbol.ContainingType, SymbolEqualityComparer.Default);
+
+                foreach (var classGroup in methodsByClass)
                 {
-                    var semanticModel = compilation.GetSemanticModel(method.SyntaxTree);
-                    var symbol = semanticModel.GetDeclaredSymbol(method);
-                    if (symbol == null)
-                        continue;
-
-                    if (!HasTestAttribute(symbol))
-                        continue;
-
-                    var classSymbol = symbol.ContainingType;
+                    var classSymbol = classGroup.Key;
                     var ns = classSymbol.ContainingNamespace.ToDisplayString();
-                    var assembly = classSymbol.ContainingAssembly.Name;
+                    var safeNamespace = string.IsNullOrEmpty(ns) ? "Gandalf.Generated" : ns;
                     var cls = classSymbol.Name;
-                    var methodName = symbol.Name;
+                    var safeClassName = $"{cls}_Discovered_Tests";
+                    var fqType = classSymbol.ToDisplayString();
+                    var assembly = classSymbol.ContainingAssembly.Name;
+                    var allRegistrations = new List<string>();
+                    
+                    var classMethods = classGroup.ToList();
+                    var classMethodSymbols = classMethods.Select(t => t.Symbol).ToList();
+                    
+                    // Find properties with [Inject] attribute
+                    var injectProperties = (classSymbol as INamedTypeSymbol)?.GetMembers()
+                        .Where(m => m is IPropertySymbol)
+                        .Cast<IPropertySymbol>()
+                        .Where(p => p.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.InjectAttribute"))
+                        .ToList() ?? new List<IPropertySymbol>();
 
-                    var filePath = method.SyntaxTree.FilePath;
-                    var (startLine, startCharacter, endLine, endCharacter) = GetLineInfo(method);
+                    // Generate test registrations
+                    foreach (var (method, symbol) in classGroup)
+                    {
+                        var (startLine, startCharacter, endLine, endCharacter) = GetLineInfo(method);
+                        var methodName = method.Identifier.Text;
+                        var filePath = method.SyntaxTree.FilePath;
 
-                    var fqType = string.IsNullOrEmpty(ns) ? cls : $"{ns}.{cls}";
+                        // If this method has argument attributes, create parameterized tests
+                        var argumentAttributes = symbol.GetAttributes()
+                            .Where(a => a.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.ArgumentAttribute")
+                            .ToList();
 
-                    var argumentAttributes = symbol.GetAttributes()
-                        .Where(attr => attr.AttributeClass?.Name == "ArgumentAttribute")
-                        .ToList();
+                        var registrations = argumentAttributes.Count > 0
+                            ? GenerateParameterizedTestRegistrations(symbol, argumentAttributes, fqType, ns, cls, methodName, assembly, filePath, startLine, startCharacter, endLine, endCharacter)
+                            : GenerateStandardTestRegistration(symbol, fqType, ns, cls, methodName, assembly, filePath, startLine, startCharacter, endLine, endCharacter);
+                        allRegistrations.AddRange(registrations);
+                    }
 
-                    var registrations = argumentAttributes.Count == 0
-                        ? GenerateStandardTestRegistration(symbol, fqType, ns, cls, methodName, assembly, filePath, startLine, startCharacter, endLine, endCharacter)
-                        : GenerateParameterizedTestRegistrations(symbol, argumentAttributes, fqType, ns, cls, methodName, assembly, filePath, startLine, startCharacter, endLine, endCharacter);
+                    var registrationBlock = string.Join("\n            ", allRegistrations);
+                    
+                    // Generate declarations for injected properties - but only for Singleton and Scoped
+                    var injectDeclarations = new List<string>();
+                    foreach (var prop in injectProperties)
+                    {
+                        string varName = char.ToLowerInvariant(prop.Name[0]) + prop.Name.Substring(1);
+                        string typeName = prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                        
+                        // Check for InjectAttribute to determine lifetime
+                        var injectAttr = prop.GetAttributes().First(a => a.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.InjectAttribute");
+                        var instanceTypeValue = injectAttr.ConstructorArguments.Length > 0 
+                            ? injectAttr.ConstructorArguments[0].Value
+                            : 0; // Transient is 0
+                        
+                        // Convert to int as the enum value might be stored as a number
+                        int instanceTypeInt = 0;
+                        if (instanceTypeValue != null)
+                        {
+                            if (int.TryParse(instanceTypeValue.ToString(), out int parsed))
+                            {
+                                instanceTypeInt = parsed;
+                            }
+                            else if (instanceTypeValue is int intValue)
+                            {
+                                instanceTypeInt = intValue;
+                            }
+                        }
 
-                    var safeNamespace = assembly;
-                    var safeClassName = $"{cls}_{methodName}_DiscoveredTest";
-                    var registrationBlock = string.Join("\n            ", registrations);
-
+                        if (instanceTypeInt == 2) // Singleton = 2
+                        {
+                            // Register and retrieve singleton
+                            injectDeclarations.Add($"Gandalf.Core.Helpers.TestDependencyInjection.RegisterDependency<{typeName}>(new {typeName}());");
+                            injectDeclarations.Add($"var {varName} = Gandalf.Core.Helpers.TestDependencyInjection.GetDependency<{typeName}>();");
+                        }
+                        else if (instanceTypeInt == 1) // Scoped = 1
+                        {
+                            // Only create class-level instances for Scoped dependencies, not Transient
+                            injectDeclarations.Add($"var {varName} = new {typeName}();");
+                        }
+                        // Transient dependencies will be created inline in each test's object initializer
+                    }
+                    var injectBlock = string.Join("\n            ", injectDeclarations);
+                    
                     var code =
 $@"// <auto-generated />
 using System;
@@ -72,18 +128,19 @@ namespace {safeNamespace}
         [ModuleInitializer]
         public static void Initialize()
         {{
+            {injectBlock}
             {registrationBlock}
         }}
     }}
 }}";
-                    var fileName = $"{assembly}.{cls}.{methodName}.DiscoveredTest.g.cs";
+                    var fileName = $"{assembly}.{cls}.DiscoveredTests.g.cs";
                     spc.AddSource(fileName, code);
                 }
             });
         }
 
         private static bool HasTestAttribute(IMethodSymbol symbol) =>
-            symbol.GetAttributes().Any(attr => attr.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.TestAttribute");
+            symbol.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.TestAttribute");
 
         private static (int startLine, int startCharacter, int endLine, int endCharacter) GetLineInfo(MethodDeclarationSyntax method)
         {
@@ -104,10 +161,80 @@ namespace {safeNamespace}
             var testUid = $"{ns}.{cls}.{methodName}";
             var callArguments = BuildCallArguments(symbol.Parameters);
             var callArgsString = string.Join(", ", callArguments);
-            var c = $"() => new {fqType}().{methodName}({callArgsString})";
+            
+            // Create object initializer for injected properties if any exist
+            var injectedProps = symbol.ContainingType.GetMembers()
+                .Where(m => m is IPropertySymbol)
+                .Cast<IPropertySymbol>()
+                .Where(p => p.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.InjectAttribute"))
+                .ToList();
+            
+            var objInitializer = "()";
+            if (injectedProps.Any())
+            {
+                var props = new List<string>();
+                foreach (var prop in injectedProps)
+                {
+                    var injectAttr = prop.GetAttributes().First(a => a.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.InjectAttribute");
+                    var instanceTypeValue = injectAttr.ConstructorArguments.Length > 0 
+                        ? injectAttr.ConstructorArguments[0].Value
+                        : 0; // Transient is 0
+                    
+                    // Convert to int as the enum value might be stored as a number
+                    int instanceTypeInt = 0;
+                    if (instanceTypeValue != null)
+                    {
+                        if (int.TryParse(instanceTypeValue.ToString(), out int parsed))
+                        {
+                            instanceTypeInt = parsed;
+                        }
+                        else if (instanceTypeValue is int intValue)
+                        {
+                            instanceTypeInt = intValue;
+                        }
+                    }
+                    
+                    // Based on the lifetime, determine how to initialize the property
+                    string propRef;
+                    if (instanceTypeInt == 0) // Transient = 0
+                    {
+                        // Create a new instance directly in the initializer for Transient dependencies
+                        propRef = $"new {prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}()";
+                    }
+                    else if (instanceTypeInt == 1 || instanceTypeInt == 2) // Scoped = 1, Singleton = 2
+                    {
+                        // Use the pre-created instance for both Singleton and Scoped
+                        propRef = char.ToLowerInvariant(prop.Name[0]) + prop.Name.Substring(1);
+                    }
+                    else
+                    {
+                        // Fallback - should not happen
+                        propRef = $"new {prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}()";
+                    }
+                    
+                    props.Add($"{prop.Name} = {propRef}");
+                }
+                objInitializer = $" {{ {string.Join(", ", props)} }}";
+            }
+            
+            var invokeAsync = $"() => new {fqType}{objInitializer}.{methodName}({callArgsString})";
             return new List<string>
             {
-                $"DiscoveredTests.Register(new DiscoveredTest(\"{testUid}\", \"{assembly}\", \"{ns}\", \"{cls}\", \"{methodName}\", {c}, \"{filePath}\", {startLine}, {startCharacter}, {endLine}, {endCharacter}));"
+                $@"DiscoveredTests.Register(
+                    new DiscoveredTest(
+                        ""{testUid}"",
+                        ""{assembly}"",
+                        ""{ns}"",
+                        ""{cls}"",
+                        ""{methodName}"",
+                        {invokeAsync},
+                        ""{filePath}"",
+                        {startLine},
+                        {startCharacter},
+                        {endLine},
+                        {endCharacter}
+                    )
+                );"
             };
         }
 
@@ -120,6 +247,61 @@ namespace {safeNamespace}
             var parentUid = $"{ns}.{cls}.{methodName}";
             int count = 0;
 
+            // Create object initializer for injected properties if any exist
+            var injectedProps = symbol.ContainingType.GetMembers()
+                .Where(m => m is IPropertySymbol)
+                .Cast<IPropertySymbol>()
+                .Where(p => p.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.InjectAttribute"))
+                .ToList();
+            
+            var objInitializer = "()";
+            if (injectedProps.Any())
+            {
+                var props = new List<string>();
+                foreach (var prop in injectedProps)
+                {
+                    var injectAttr = prop.GetAttributes().First(a => a.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.InjectAttribute");
+                    var instanceTypeValue = injectAttr.ConstructorArguments.Length > 0 
+                        ? injectAttr.ConstructorArguments[0].Value
+                        : 0; // Transient is 0
+                    
+                    // Convert to int as the enum value might be stored as a number
+                    int instanceTypeInt = 0;
+                    if (instanceTypeValue != null)
+                    {
+                        if (int.TryParse(instanceTypeValue.ToString(), out int parsed))
+                        {
+                            instanceTypeInt = parsed;
+                        }
+                        else if (instanceTypeValue is int intValue)
+                        {
+                            instanceTypeInt = intValue;
+                        }
+                    }
+                    
+                    // Based on the lifetime, determine how to initialize the property
+                    string propRef;
+                    if (instanceTypeInt == 0) // Transient = 0
+                    {
+                        // Create a new instance directly in the initializer for Transient dependencies
+                        propRef = $"new {prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}()";
+                    }
+                    else if (instanceTypeInt == 1 || instanceTypeInt == 2) // Scoped = 1, Singleton = 2
+                    {
+                        // Use the pre-created instance for both Singleton and Scoped
+                        propRef = char.ToLowerInvariant(prop.Name[0]) + prop.Name.Substring(1);
+                    }
+                    else
+                    {
+                        // Fallback - should not happen
+                        propRef = $"new {prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}()";
+                    }
+                    
+                    props.Add($"{prop.Name} = {propRef}");
+                }
+                objInitializer = $" {{ {string.Join(", ", props)} }}";
+            }
+
             foreach (var argAttr in argumentAttributes)
             {
                 var args = argAttr.ConstructorArguments.FirstOrDefault();
@@ -131,13 +313,30 @@ namespace {safeNamespace}
 
                 var callArguments = BuildCallArguments(parameters, argList);
                 var callArgsString = string.Join(", ", callArguments);
-                var c = $"() => new {fqType}().{methodName}({callArgsString})";
+                var invokeAsync = $"() => new {fqType}{objInitializer}.{methodName}({callArgsString})";
                 var childUid = $"{ns}.{cls}.{methodName}-{count}";
                 var argString = string.Join(", ", argList);
 
                 registrations.Add(
-                    $"DiscoveredTests.Register(new DiscoveredTest(\"{childUid}\", \"{assembly}\", \"{ns}\", \"{cls}\", \"{methodName}\", {c}, \"{filePath}\", {startLine}, {startCharacter}, {endLine}, {endCharacter}, new object[] {{ {argString} }}, \"{parentUid}\"));"
+                    $@"DiscoveredTests.Register(
+                        new DiscoveredTest(
+                            ""{childUid}"",
+                            ""{assembly}"",
+                            ""{ns}"",
+                            ""{cls}"",
+                            ""{methodName}"",
+                            {invokeAsync},
+                            ""{filePath}"",
+                            {startLine},
+                            {startCharacter},
+                            {endLine},
+                            {endCharacter},
+                            new object[] {{ {argString} }},
+                            ""{parentUid}""
+                        )
+                    );"
                 );
+
                 count++;
             }
 
@@ -147,24 +346,33 @@ namespace {safeNamespace}
         private static List<string> BuildCallArguments(IEnumerable<IParameterSymbol> parameters, string[] argList = null)
         {
             var callArguments = new List<string>();
-            int argIndex = 0;
-            foreach (var param in parameters)
-            {
-                bool isInject = param.GetAttributes()
-                    .Any(attr => attr.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.InjectAttribute");
+            var parametersList = parameters.ToList();
 
-                if (argList != null)
+            for (int i = 0; i < parametersList.Count; i++)
+            {
+                var parameter = parametersList[i];
+                if (argList != null && i < argList.Length)
                 {
-                    callArguments.Add(argList[argIndex]);
-                    argIndex++;
+                    callArguments.Add(argList[i]);
+                }
+                else if (parameter.Type.SpecialType == SpecialType.System_String)
+                {
+                    callArguments.Add("\"\"");
+                }
+                else if (parameter.Type.TypeKind == TypeKind.Enum)
+                {
+                    callArguments.Add("default");
+                }
+                else if (parameter.Type.IsReferenceType || parameter.Type.TypeKind == TypeKind.TypeParameter)
+                {
+                    callArguments.Add("null");
                 }
                 else
                 {
-                    callArguments.Add(param.HasExplicitDefaultValue
-                        ? (param.ExplicitDefaultValue is string s ? $"\"{s}\"" : param.ExplicitDefaultValue?.ToString() ?? "null")
-                        : "default");
+                    callArguments.Add("default");
                 }
             }
+
             return callArguments;
         }
     }
