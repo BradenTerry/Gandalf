@@ -97,9 +97,34 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
                     var asyncLocalOutput = new AsyncLocalTextWriter();
                     var originalOut = Console.Out;
                     Console.SetOut(asyncLocalOutput);
+                    var testContext = new TestContext(
+                        testInfo.Uid,
+                        testInfo.MethodName,
+                        testInfo.Assembly,
+                        asyncLocalOutput);
 
+                    CurrentTest.TestContext.Value = testContext;
                     var startTime = DateTimeOffset.UtcNow;
                     DateTimeOffset? endTime = null;
+
+                    var runningTestNode = new TestNode
+                    {
+                        Uid = testInfo.Uid,
+                        DisplayName = testInfo.MethodName
+                    };
+
+                    // Notify the test explorer that the test is running
+                    runningTestNode.Properties.Add(new InProgressTestNodeStateProperty());
+                    if (testInfo.ParentUid != null)
+                        await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, runningTestNode, testInfo.ParentUid));
+                    else
+                        await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, runningTestNode));
+
+                    var testNode = new TestNode
+                    {
+                        Uid = testInfo.Uid,
+                        DisplayName = testInfo.MethodName
+                    };
 
                     try
                     {
@@ -112,49 +137,37 @@ internal sealed class TestingFramework : ITestFramework, IDataProducer, IOutputD
                             endTime = DateTimeOffset.UtcNow;
                         }
 
-                        var successfulTestNode = new TestNode()
-                        {
-                            Uid = testInfo.Uid,
-                            DisplayName = testInfo.MethodName,
-                            Properties = new PropertyBag(PassedTestNodeStateProperty.CachedInstance)
-                        };
-
-                        successfulTestNode.Properties.Add(new TimingProperty(new TimingInfo(startTime, endTime.Value, endTime.Value - startTime)));
+                        testNode.Properties.Add(new PassedTestNodeStateProperty());
+                        testNode.Properties.Add(new TimingProperty(new TimingInfo(startTime, endTime.Value, endTime.Value - startTime)));
 
                         // Add captured output as a property
 #pragma warning disable TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-                        successfulTestNode.Properties.Add(new StandardOutputProperty(asyncLocalOutput.ToString()));
+                        testNode.Properties.Add(new StandardOutputProperty(asyncLocalOutput.ToString()));
 #pragma warning restore TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
                         if (testInfo.ParentUid != null)
-                            await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, successfulTestNode, testInfo.ParentUid));
+                            await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, testNode, testInfo.ParentUid));
                         else
-                            await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, successfulTestNode));
+                            await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, testNode));
                     }
                     catch (Exception ex)
                     {
-                        var assertionFailedTestNode = new TestNode
-                        {
-                            Uid = testInfo.Uid,
-                            DisplayName = testInfo.MethodName,
-                            Properties = new PropertyBag(new FailedTestNodeStateProperty(ex))
-                        };
-
-                        assertionFailedTestNode.Properties.Add(new TimingProperty(new TimingInfo(startTime, endTime!.Value, endTime.Value - startTime)));
-
+                        testNode.Properties.Add(new FailedTestNodeStateProperty());
+                        testNode.Properties.Add(new TimingProperty(new TimingInfo(startTime, endTime!.Value, endTime.Value - startTime)));
 
                         // Add captured output even on failure
 #pragma warning disable TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-                        assertionFailedTestNode.Properties.Add(new StandardOutputProperty(asyncLocalOutput.ToString()));
+                        testNode.Properties.Add(new StandardOutputProperty(asyncLocalOutput.ToString()));
 #pragma warning restore TPEXP // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
                         if (testInfo.ParentUid != null)
-                            await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, assertionFailedTestNode, testInfo.ParentUid));
+                            await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, testNode, testInfo.ParentUid));
                         else
-                            await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, assertionFailedTestNode));
+                            await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, testNode));
                     }
                     finally
                     {
+                        CurrentTest.TestContext.Value = null;
                         AsyncLocalTextWriter.Current.Value = null;
                         Console.SetOut(originalOut);
                     }

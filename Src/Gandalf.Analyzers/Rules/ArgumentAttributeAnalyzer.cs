@@ -46,6 +46,8 @@ namespace Gandalf.Analyzers
                     paramCount++;
             }
 
+            bool hasArgumentAttribute = false;
+
             foreach (var attrList in methodDecl.AttributeLists)
             {
                 foreach (var attr in attrList.Attributes)
@@ -57,6 +59,8 @@ namespace Gandalf.Analyzers
                     var attrClass = attrSymbol.ContainingType;
                     if (attrClass.ToDisplayString() != "Gandalf.Core.Attributes.ArgumentAttribute")
                         continue;
+
+                    hasArgumentAttribute = true;
 
                     // Count arguments in the attribute
                     int argCount = attr.ArgumentList?.Arguments.Count ?? 0;
@@ -70,6 +74,16 @@ namespace Gandalf.Analyzers
                         context.ReportDiagnostic(diagnostic);
                     }
                 }
+            }
+
+            // If there are parameters (excluding [Inject]) but no [Argument] attribute, show an error
+            if (paramCount > 0 && !hasArgumentAttribute)
+            {
+                var diagnostic = Diagnostic.Create(
+                    Rule,
+                    methodDecl.Identifier.GetLocation(),
+                    0, paramCount);
+                context.ReportDiagnostic(diagnostic);
             }
         }
     }
