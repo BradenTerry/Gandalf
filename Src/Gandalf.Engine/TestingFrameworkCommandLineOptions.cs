@@ -7,6 +7,7 @@ internal sealed class TestingFrameworkCommandLineOptions : ICommandLineOptionsPr
     public const string DopOption = "dop";
     public const string GenerateReportOption = "generatereport";
     public const string ReportFilenameOption = "reportfilename";
+    public const string CategoryOption = "category";
 
     public string Uid => nameof(TestingFrameworkCommandLineOptions);
 
@@ -21,6 +22,7 @@ internal sealed class TestingFrameworkCommandLineOptions : ICommandLineOptionsPr
         new CommandLineOption(DopOption,"Degree of parallelism", ArgumentArity.ExactlyOne, false),
         new CommandLineOption(GenerateReportOption,"Generate a test report file", ArgumentArity.Zero, false),
         new CommandLineOption(ReportFilenameOption,"Report file name to use together with --generatereport", ArgumentArity.ExactlyOne, false),
+        new CommandLineOption(CategoryOption, "Run only tests with the given category (can be specified multiple times)", ArgumentArity.ExactlyOne, true),
     };
 
     public Task<bool> IsEnabledAsync() => Task.FromResult(true);

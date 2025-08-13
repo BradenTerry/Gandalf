@@ -28,6 +28,10 @@ namespace Gandalf.Core.Models
         public object[] Parameters { get; }
         public Func<Task> InvokeAsync { get; }
 
+        // New properties for category and ignore support
+        public string[] Categories { get; }
+        public string IgnoreReason { get; }
+
         public DiscoveredTest(
             string uid,
             string assembly,
@@ -40,13 +44,15 @@ namespace Gandalf.Core.Models
             int linePosition,
             int endLineNumber,
             int endLinePosition,
-        #if NET7_0_OR_GREATER
+#if NET7_0_OR_GREATER
             object[]? parameters = null,
             string? parentUid = null,
 #else
             object[] parameters = null,
-            string parentUid = null
-        #endif
+            string parentUid = null,
+#endif
+            string[] categories = null,
+            string ignoreReason = null
         )
         {
             Uid = uid;
@@ -62,6 +68,8 @@ namespace Gandalf.Core.Models
             Parameters = parameters;
             InvokeAsync = invokeAsync;
             ParentUid = parentUid;
+            Categories = categories ?? Array.Empty<string>();
+            IgnoreReason = ignoreReason;
         }
 
         public string FullName => Parameters == null

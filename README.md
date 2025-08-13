@@ -1,47 +1,53 @@
-
-# 🧙‍♂️ Gandalf - .NET Test Framework
+# 🧙‍♂️ Gandalf - The Magical .NET Test Framework
 
 > "You shall not pass... unless your tests do!"
 
+## Welcome to Gandalf!
 
-Welcome to Gandalf! This is a modern, lightweight .NET test framework designed for speed, clarity, and extensibility. Gandalf uses C# source generators to automatically discover and register your test methods, so you can focus on writing tests, not boilerplate.
+Gandalf is not your average .NET test framework. It's lightweight, fast, and powered by C# source generators that automatically discover and register your test methods—so you can focus on writing spells (uh, tests), not boilerplate.
 
-## ✨ Features
-- Fast, zero-boilerplate test discovery
-- Attribute-based test authoring ([see all attributes here](Docs/attributes.md))
-- Dependency injection with support for Transient, Scoped, and Singleton lifetimes
-- Roslyn analyzers for code quality
+✨ **Features:**
+- 🪄 Zero-boilerplate test discovery
+- 🧩 Attribute-based test magic ([see all attributes here](Docs/attributes.md))
+- 🧪 Dependency injection with lifetimes (Transient, Scoped, Singleton)
+- 🚀 Blazing fast test runs
+- 🧹 Roslyn analyzers to keep your code clean
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - .NET SDK 6.0 or later
 - Visual Studio 2022 or JetBrains Rider
 
-### Build & Test
+### Build & Test in 3 Easy Steps
 
 ```bash
-dotnet restore Gandalf.sln
-dotnet build Gandalf.sln
-dotnet test Src/Gandalf.Tests/Gandalf.Tests.csproj
+# 1. Restore your magical NuGet packages
+$ dotnet restore Gandalf.sln
+
+# 2. Build the solution (wave your staff)
+$ dotnet build Gandalf.sln
+
+# 3. Run the tests (let the magic happen)
+$ dotnet test Src/Gandalf.Tests/Gandalf.Tests.csproj
 ```
 
-## 🗂️ Project Structure
+## Project Map
 
 - **Gandalf.Core**: Core attributes, models, and helpers
 - **Gandalf.Engine**: The test runner and execution engine
 - **Gandalf.Engine.SourceGenerators**: Source generators for test discovery
 - **Gandalf.Analyzers**: Roslyn analyzers for code quality
 
-See all available attributes in the [Attribute Reference](Docs/attributes.md).
+Want to see all the magical attributes you can use? [Check out the Attribute Reference!](Docs/attributes.md)
 
-## 🛠️ How It Works
+## How Does It Work?
 
-1. **Source Generators**: Discover and register your tests at compile time.
+1. **Source Generators**: Find your tests and wire them up—automagically.
 2. **[Test] Attribute**: Mark your methods, and Gandalf will find them.
 3. **[Inject] Attribute**: Add dependencies to your tests with DI (supports Transient, Scoped, Singleton).
 
-## Example
+## Example: Cast a Test Spell
 
 ```csharp
 public class MyTests
@@ -68,10 +74,10 @@ public class MyTests
 }
 ```
 
-## 🤝 Contributing
+## Contributing
 
-Pull requests and issues are welcome! Help Gandalf become the best .NET test framework for everyone.
+Pull requests, issues, and magical suggestions are welcome! Help Gandalf become the most powerful test wizard in .NET land.
 
-----
+---
 
-**Happy testing with Gandalf!**
+🧙‍♂️ **May your tests always pass, and your bugs be forever banished!**

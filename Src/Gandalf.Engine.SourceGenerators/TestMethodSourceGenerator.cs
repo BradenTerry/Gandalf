@@ -217,25 +217,58 @@ namespace {safeNamespace}
                 objInitializer = $" {{ {string.Join(", ", props)} }}";
             }
             
-            var invokeAsync = $"() => new {fqType}{objInitializer}.{methodName}({callArgsString})";
-            return new List<string>
+            // Gather categories and ignore reason from method and class
+            var categories = new List<string>();
+            string ignoreReason = null;
+            // Method-level
+            foreach (var attr in symbol.GetAttributes())
             {
-                $@"DiscoveredTests.Register(
-                    new DiscoveredTest(
-                        ""{testUid}"",
-                        ""{assembly}"",
-                        ""{ns}"",
-                        ""{cls}"",
-                        ""{methodName}"",
-                        {invokeAsync},
-                        ""{filePath}"",
-                        {startLine},
-                        {startCharacter},
-                        {endLine},
-                        {endCharacter}
-                    )
-                );"
-            };
+                if (attr.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.CategoryAttribute")
+                {
+                    if (attr.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is string cat)
+                        categories.Add(cat);
+                }
+                if (attr.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.IgnoreAttribute")
+                {
+                    if (attr.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is string reason)
+                        ignoreReason = reason;
+                    else
+                        ignoreReason = "Ignored";
+                }
+            }
+            // Class-level
+            var classSymbol = symbol.ContainingType;
+            foreach (var attr in classSymbol.GetAttributes())
+            {
+                if (attr.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.CategoryAttribute")
+                {
+                    if (attr.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is string cat)
+                        categories.Add(cat);
+                }
+                if (attr.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.IgnoreAttribute")
+                {
+                    if (attr.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is string reason)
+                        ignoreReason = reason;
+                    else
+                        ignoreReason = "Ignored";
+                }
+            }
+            var categoriesArray = categories.Count == 0
+                ? "null"
+                : "new string[] { " + string.Join(", ", categories.Select(c => $"\"{c.Replace("\"", "\\\"")}\"")) + " }";
+
+            var invokeAsync = $"async () => await new {fqType}{objInitializer}.{methodName}({callArgsString})";
+            var ignoreReasonCode = ignoreReason == null ? "null" : $"\"{ignoreReason.Replace("\"", "\\\"")}\"";
+            var code =
+                $"DiscoveredTests.Register(new DiscoveredTest(\"{testUid.Replace("\"", "\\\"")}\", " +
+                $"\"{assembly.Replace("\"", "\\\"")}\", " +
+                $"\"{ns.Replace("\"", "\\\"")}\", " +
+                $"\"{cls.Replace("\"", "\\\"")}\", " +
+                $"\"{methodName.Replace("\"", "\\\"")}\", " +
+                $"{invokeAsync}, " +
+                $"\"{filePath.Replace("\"", "\\\"")}\", " +
+                $"{startLine}, {startCharacter}, {endLine}, {endCharacter}, null, null, {categoriesArray}, {ignoreReasonCode}));";
+            return new List<string> { code };
         }
 
         private static List<string> GenerateParameterizedTestRegistrations(
@@ -302,6 +335,47 @@ namespace {safeNamespace}
                 objInitializer = $" {{ {string.Join(", ", props)} }}";
             }
 
+            // Gather categories and ignore reason from method and class (same logic as standard tests)
+            var categories = new List<string>();
+            string ignoreReason = null;
+            // Method-level
+            foreach (var attr in symbol.GetAttributes())
+            {
+                if (attr.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.CategoryAttribute")
+                {
+                    if (attr.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is string cat)
+                        categories.Add(cat);
+                }
+                if (attr.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.IgnoreAttribute")
+                {
+                    if (attr.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is string reason)
+                        ignoreReason = reason;
+                    else
+                        ignoreReason = "Ignored";
+                }
+            }
+            // Class-level
+            var classSymbol = symbol.ContainingType;
+            foreach (var attr in classSymbol.GetAttributes())
+            {
+                if (attr.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.CategoryAttribute")
+                {
+                    if (attr.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is string cat)
+                        categories.Add(cat);
+                }
+                if (attr.AttributeClass?.ToDisplayString() == "Gandalf.Core.Attributes.IgnoreAttribute")
+                {
+                    if (attr.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is string reason)
+                        ignoreReason = reason;
+                    else
+                        ignoreReason = "Ignored";
+                }
+            }
+            var categoriesArray = categories.Count == 0
+                ? "null"
+                : "new string[] { " + string.Join(", ", categories.Select(c => $"\"{c.Replace("\"", "\\\"")}\"")) + " }";
+            var ignoreReasonCode = ignoreReason == null ? "null" : $"\"{ignoreReason.Replace("\"", "\\\"")}\"";
+
             foreach (var argAttr in argumentAttributes)
             {
                 var args = argAttr.ConstructorArguments.FirstOrDefault();
@@ -313,7 +387,7 @@ namespace {safeNamespace}
 
                 var callArguments = BuildCallArguments(parameters, argList);
                 var callArgsString = string.Join(", ", callArguments);
-                var invokeAsync = $"() => new {fqType}{objInitializer}.{methodName}({callArgsString})";
+                var invokeAsync = $"async () => await new {fqType}{objInitializer}.{methodName}({callArgsString})";
                 var childUid = $"{ns}.{cls}.{methodName}-{count}";
                 var argString = string.Join(", ", argList);
 
@@ -332,7 +406,9 @@ namespace {safeNamespace}
                             {endLine},
                             {endCharacter},
                             new object[] {{ {argString} }},
-                            ""{parentUid}""
+                            ""{parentUid}"",
+                            {categoriesArray},
+                            {ignoreReasonCode}
                         )
                     );"
                 );

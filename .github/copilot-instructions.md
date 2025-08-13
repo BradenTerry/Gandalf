@@ -44,26 +44,71 @@ dotnet test Src/Gandalf.Tests/Gandalf.Tests.csproj
 2. Build the solution with `dotnet build` to verify compilation
 3. Run tests to ensure everything works correctly
 
+
 ## Project Structure
 
-### Core Components
+### Solution Layout
 
-- **Gandalf.Core**: Contains the core attributes and models
-  - `Attributes/`: Contains TestAttribute, InjectAttribute, and ArgumentAttribute
-  - `Helpers/`: Common helper classes including TestDependencyInjection
-  - `Models/`: Data models for test discovery and execution
+```
+Gandalf.sln
+README.md
+docs/
+  architecture.md
+  attributes.md
+Src/
+  Gandalf.Core/
+    Attributes/
+      TestAttribute.cs
+      InjectAttribute.cs
+      ArgumentAttribute.cs
+      CategoryAttribute.cs
+      IgnoreAttribute.cs
+    Helpers/
+      TestDependencyInjection.cs
+      AsyncLocalTextWriter.cs
+      DiscoveredTests.cs
+    Models/
+      DiscoveredTest.cs
+      CurrentTest.cs
+      TestContext.cs
+  Gandalf.Engine/
+    Helpers/
+    Program.cs
+    GandalfTestingFramework.cs
+    TestFrameworkCapabilities.cs
+    TestingFrameworkCommandLineOptions.cs
+    ...other engine files...
+  Gandalf.Engine.SourceGenerators/
+    TestMethodSourceGenerator.cs
+    TestServiceProviderIncrementalSourceGenerator.cs
+  Gandalf.Analyzers/
+    Rules/
+      ArgumentAttributeAnalyzer.cs
+      ArgumentAttributeTypeAnalyzer.cs
+      InjectAttributeAnalyzer.cs
+      TestsReturnTasksAnalyzer.cs
+  Gandalf.Tests/
+    BasicTests.cs
+    DependencyInjectionTests.cs
+    CategoryAndIgnoreTests.cs
+    ...other test files...
+```
 
-- **Gandalf.Engine**: The test runner and execution engine
-  - `Program.cs`: Entry point for the test runner
-  - `TestFramework.cs`: Core test framework implementation
-  - Various test lifecycle handlers and extensions
+### Folder/Component Breakdown
 
-- **Gandalf.Engine.SourceGenerators**: Source generators for test discovery
-  - `TestMethodSourceGenerator.cs`: Generates code to register test methods
-  - `TestServiceProviderIncrementalSourceGenerator.cs`: Generates service provider code
+- **Gandalf.Core**: Core attributes, models, and helpers for test definition and DI
+- **Gandalf.Engine**: Test runner, execution engine, CLI, and lifecycle management
+- **Gandalf.Engine.SourceGenerators**: Source generators for test discovery and DI
+- **Gandalf.Analyzers**: Roslyn analyzers for code quality and test conventions
+- **Gandalf.Tests**: All test projects and files (can be grouped by feature as needed)
 
-- **Gandalf.Analyzers**: Roslyn analyzers for code quality rules
-  - `Rules/`: Contains the analyzer implementations
+### Best Practices
+
+- Keep all test files in `Gandalf.Tests/` (group by feature if needed)
+- Place all documentation in the `docs/` folder
+- Keep build artifacts (`bin/`, `obj/`) inside their respective projects
+
+This structure is designed for clarity, scalability, and maintainability in a .NET test framework solution.
 
 ### Key Architectural Patterns
 

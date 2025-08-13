@@ -169,10 +169,45 @@ internal sealed class GandalfTestingFramework : ITestFramework, IDataProducer, I
 
         try
         {
+            // Get category filter from CLI options - try different configuration keys
+            var categoryFilter = new List<string>();
+            var catStr = _configuration?["category"] ?? _configuration?["CategoryOption"] ?? _configuration?["TestingFrameworkCommandLineOptions:category"];
+            
+            if (!string.IsNullOrWhiteSpace(catStr))
+            {
+                categoryFilter.AddRange(catStr.Split(','));
+            }
+            
+            // Debug output to see what configuration is available
+            await _outputDevice.DisplayAsync(this, new FormattedTextOutputDeviceData($"Category filter: '{catStr}'") { ForegroundColor = new SystemConsoleColor() { ConsoleColor = ConsoleColor.Yellow } });
+
             var testsToRun = DiscoveredTests.All.Where(test => _assemblies.Any(assembly => assembly.GetName().Name == test.Assembly)).ToList();
+            if (categoryFilter.Count > 0)
+            {
+                var originalCount = testsToRun.Count;
+                testsToRun = testsToRun.Where(t => t.Categories != null && t.Categories.Any(cat => categoryFilter.Contains(cat))).ToList();
+                await _outputDevice.DisplayAsync(this, new FormattedTextOutputDeviceData($"Filtered from {originalCount} to {testsToRun.Count} tests by categories: {string.Join(", ", categoryFilter)}") { ForegroundColor = new SystemConsoleColor() { ConsoleColor = ConsoleColor.Yellow } });
+            }
             await _outputDevice.DisplayAsync(this, new FormattedTextOutputDeviceData($"Found {testsToRun.Count} tests to run.") { ForegroundColor = new SystemConsoleColor() { ConsoleColor = ConsoleColor.Green } });
             foreach (var testInfo in testsToRun)
+            {
+                if (!string.IsNullOrEmpty(testInfo.IgnoreReason))
+                {
+                    // Report as skipped
+                    var skippedNode = new TestNode
+                    {
+                        Uid = testInfo.Uid,
+                        DisplayName = testInfo.MethodName
+                    };
+                    skippedNode.Properties.Add(new SkippedTestNodeStateProperty(testInfo.IgnoreReason));
+                    if (testInfo.ParentUid != null)
+                        await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, skippedNode, testInfo.ParentUid));
+                    else
+                        await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(runTestExecutionRequest.Session.SessionUid, skippedNode));
+                    continue;
+                }
                 await actionBlock.SendAsync(testInfo);
+            }
 
             actionBlock.Complete();
             await actionBlock.Completion;
