@@ -1,9 +1,8 @@
 using System;
 
-namespace Gandalf.Core.Attributes
+namespace Gandalf.Core.Attributes;
+
+[AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+public sealed class TestAttribute : Attribute
 {
-    [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
-    public sealed class TestAttribute : Attribute
-    {
-    }
 }

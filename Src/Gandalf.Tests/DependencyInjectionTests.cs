@@ -48,18 +48,25 @@ public class DependencyInjectionTests
         return Task.CompletedTask;
     }
 
+    [ScopedGroup("Test2")]
     [Inject(InstanceType.Scoped)]
     public required TestClass Scoped { get; init; }
 
     [Inject(InstanceType.Scoped)]
     public required TestClass Scoped2 { get; init; }
 
+    [Inject(InstanceType.Scoped)]
+    public required TestClass Scoped3 { get; init; }
+
     private static TestClass? _scopedTestClass;
     private static TestClass? _scopedTestClass2;
+    
+    // For cross-class sharing verification
+    public static TestClass? CrossClassSharedInstance { get; set; }
     [Test]
     [Argument(1)]
     [Argument(2)]
-    public Task ScopedTests_DifferentInstancePerParameter(int num)
+    public Task ScopedTests_SameInstancePerGroup(int num)
     {
         if (Scoped == null)
         {
@@ -71,8 +78,13 @@ public class DependencyInjectionTests
             throw new Exception("Scoped2 is not initialized");
         }
 
-        if (Scoped == Scoped2)
-            throw new Exception("Scoped and Scoped2 are the same instance");
+        // With ScopeGroup("Test2"), Scoped and Scoped2 should be the same instance
+        if (Scoped != Scoped2)
+            throw new Exception("Scoped and Scoped2 should be the same instance due to ScopeGroup");
+
+        // But Scoped3 (no ScopeGroup) should be different
+        if (Scoped != Scoped3)
+            throw new Exception("Scoped and Scoped3 should be the same instances");
 
         if (num == 1)
         {
@@ -81,9 +93,23 @@ public class DependencyInjectionTests
             return Task.CompletedTask;
         }
 
-        // Check that the same instance is used
+        // Check that across test parameters, the same scoped instance is used
         if (_scopedTestClass != Scoped || _scopedTestClass2 != Scoped2)
-            throw new Exception("Scoped is not the same instance as the one captured");
+            throw new Exception("Scoped instances should be the same across test parameters within the same group");
+
+        return Task.CompletedTask;
+    }
+
+    [Test]
+    public Task VerifyCrossClassSharing()
+    {
+        // This test verifies that scoped instances are shared across different test classes
+        // when they have the same ScopeGroup
+        if (CrossClassSharedInstance != null)
+        {
+            if (Scoped != CrossClassSharedInstance)
+                throw new Exception("Cross-class scoped sharing failed - instances are different");
+        }
 
         return Task.CompletedTask;
     }

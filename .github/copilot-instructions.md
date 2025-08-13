@@ -1,29 +1,94 @@
-# Gandalf - .NET Lightweight Test Framework
+# Gandalf Copilot & AI Agent Instructions
 
-## Repository Overview
+## What is Gandalf?
 
-Gandalf is a lightweight .NET test framework designed to provide a simple and efficient way to write and run tests. It uses C# source generators to automatically discover and register test methods, eliminating boilerplate code.
+Gandalf is a modern, attribute-driven .NET test framework. It uses C# source generators to discover and register tests at compile time, supports dependency injection, and enforces best practices with custom analyzers. No runtime reflection is used for test discovery or invocation, making it AOT-friendly and fast.
 
-- **Project Type**: .NET Test Framework
-- **Languages**: C# 
-- **Framework**: .NET Core/.NET 5+
-- **Main Components**:
-  - Core library (attributes, models)
-  - Test engine (runner, reporting)
-  - Source generators (test discovery, code generation)
-  - Analyzers (code quality rules)
-<HighLevelDetails>
+## Key Technologies & Conventions
 
-- A summary of what the repository does.
-- High level repository information, such as the size of the repo, the type of the project, the languages, frameworks, or target runtimes in use.
-</HighLevelDetails>
+- **Language:** C# (.NET 8, .NET 9)
+- **Test Discovery:** `[Test]`, `[Argument]`, `[Category]`, `[Ignore]` attributes
+- **Dependency Injection:** `[Inject]` attribute with configurable lifetimes
+- **Source Generators:** All test registration and invocation is generated at compile time
+- **Analyzers:** Enforce async-only tests and other rules in `Gandalf.Analyzers/Rules/`
+- **No Reflection:** Never use runtime reflection for test discovery or invocation
 
-## Build and Test Instructions
+## Best Practices
 
-### Prerequisites
+- All test methods must be async (`Task` or `Task<T>`)
+- Use modern, idiomatic C# (records, pattern matching, nullable reference types, async/await)
+- Use `var` only when the type is obvious
+- Keep code well-formatted and documented
+- Refactor large/complex code into focused types in `Helpers/`, `Models/`, etc.
+- Use meaningful, descriptive names
+- Prefer explicit target frameworks (e.g., `net8.0;net9.0`)
+- Use `#nullable enable` throughout
 
-- .NET SDK 6.0 or later
-- Visual Studio 2022 or JetBrains Rider
+## Build, Run, and Test
+
+**Prerequisites:**
+- .NET SDK 8.0+
+- Visual Studio 2022, JetBrains Rider, or VS Code with C# Dev Kit
+
+**Commands:**
+```bash
+dotnet restore Gandalf.sln
+dotnet build Gandalf.sln
+dotnet test Src/Gandalf.Tests/Gandalf.Tests.csproj
+```
+
+**Workflow:**
+1. Run `dotnet restore` after pulling changes
+2. Build with `dotnet build`
+3. Format code using IDE tools
+4. Refactor for maintainability
+5. Run all tests before submitting changes
+
+## Folder Structure
+
+- Tests: `Gandalf.Tests/` (group by feature if needed)
+- Documentation: `docs/`
+- New features: appropriate subfolder in `Src/`
+
+## Copilot Rules & Constraints
+
+- **All tests must be async** (never generate or allow sync test methods)
+- **No runtime reflection** for test discovery or invocation
+- **Follow all analyzer rules** in `Gandalf.Analyzers/Rules/`
+- **Update docs** (`docs/`, `README.md`, architecture docs) for significant changes
+
+## Example Test Class
+
+```csharp
+public class MyTests
+{
+  [Inject(InstanceType.Singleton)]
+  public required MyDependency Dependency { get; init; }
+
+  [Test]
+  public async Task MyTest()
+  {
+    await Task.Delay(10);
+    Assert.IsTrue(true);
+  }
+
+  [Test]
+  [Argument(1, 2, 3)]
+  [Argument(4, 5, 9)]
+  public async Task ParameterizedTest(int a, int b, int expected)
+  {
+    Assert.AreEqual(expected, a + b);
+    await Task.CompletedTask;
+  }
+}
+```
+
+## Tips for Copilot
+
+- Prefer static code generation and explicit registration
+- Review analyzer rules and existing code for conventions
+- Keep code maintainable, scalable, and well-documented
+- Use clear, idiomatic C# and modern .NET features
 
 ### Build Commands
 
@@ -38,14 +103,13 @@ dotnet build Gandalf.sln
 dotnet test Src/Gandalf.Tests/Gandalf.Tests.csproj
 ```
 
-
 ### Development Workflow
 
-1. Always run `dotnet restore` after pulling new changes
-2. After making any modifications, **build the solution** with `dotnet build` to verify that it compiles successfully. Ensure the build completes without errors before proceeding.
-3. **Re-format the code** to ensure it is readable and follows standard C# formatting conventions. Use your IDE's built-in code formatting tools (e.g., Visual Studio: `Ctrl+K, Ctrl+D` or right-click > Format Document).
-4. **Move code to smaller classes if needed**: If a file or class becomes too large or complex, refactor the code by splitting it into smaller, focused classes. This improves maintainability and readability. Place new classes in appropriate folders (e.g., `Helpers/`, `Models/`, etc.).
-5. Run tests to ensure everything works correctly
+1. Always run `dotnet restore` after pulling new changes.
+2. Build the solution with `dotnet build` to verify compilation.
+3. Format code using your IDE's tools (e.g., Visual Studio: `Ctrl+K, Ctrl+D`).
+4. Refactor large/complex files into smaller classes in appropriate folders (`Helpers/`, `Models/`, etc.).
+5. Run all tests to ensure correctness before submitting changes.
 
 
 ## Project Structure
@@ -105,13 +169,19 @@ Src/
 - **Gandalf.Analyzers**: Roslyn analyzers for code quality and test conventions
 - **Gandalf.Tests**: All test projects and files (can be grouped by feature as needed)
 
+
 ### Best Practices
 
-- Keep all test files in `Gandalf.Tests/` (group by feature if needed)
-- Place all documentation in the `docs/` folder
-- Keep build artifacts (`bin/`, `obj/`) inside their respective projects
+- Keep all test files in `Gandalf.Tests/` (group by feature if needed).
+- Place all documentation in the `docs/` folder.
+- Keep build artifacts (`bin/`, `obj/`) inside their respective projects.
+- Use nullable reference types (`#nullable enable`) throughout the codebase for better null safety.
+- Prefer explicit target frameworks in project files (e.g., `net8.0;net9.0`).
+- Use modern C# features (records, pattern matching, async streams, etc.) where appropriate.
+- Write analyzers and source generators to be efficient, incremental, and deterministic.
+- Add or update XML documentation for all public APIs and important internals.
 
-This structure is designed for clarity, scalability, and maintainability in a .NET test framework solution.
+This structure is designed for clarity, scalability, and maintainability in a modern .NET test framework solution.
 
 ### Key Architectural Patterns
 
@@ -120,30 +190,31 @@ This structure is designed for clarity, scalability, and maintainability in a .N
 3. **Dependency Injection**: Properties can be marked with `[Inject]` attribute for DI
    - Supports three lifetimes: Transient, Scoped, and Singleton
 
+
 ### Example Usage
 
 ```csharp
 // Test class
 public class MyTests
 {
-    [Inject(InstanceType.Singleton)]
-    public required MyDependency Dependency { get; init; }
-    
-    [Test]
-    public async Task MyTest()
-    {
-        // Test implementation
-        await Task.Delay(10);
-        Assert.IsTrue(true);
-    }
-    
-    [Test]
-    [Argument(1, 2, 3)]
-    [Argument(4, 5, 9)]
-    public void ParameterizedTest(int a, int b, int expected)
-    {
-        Assert.AreEqual(expected, a + b);
-    }
+  [Inject(InstanceType.Singleton)]
+  public required MyDependency Dependency { get; init; }
+
+  [Test]
+  public async Task MyTest()
+  {
+    // Test implementation
+    await Task.Delay(10);
+    Assert.IsTrue(true);
+  }
+
+  [Test]
+  [Argument(1, 2, 3)]
+  [Argument(4, 5, 9)]
+  public async Task ParameterizedTest(int a, int b, int expected)
+  {
+    Assert.AreEqual(expected, a + b);
+    await Task.CompletedTask;
+  }
 }
 ```
-
