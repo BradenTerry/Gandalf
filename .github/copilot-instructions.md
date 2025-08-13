@@ -38,11 +38,14 @@ dotnet build Gandalf.sln
 dotnet test Src/Gandalf.Tests/Gandalf.Tests.csproj
 ```
 
+
 ### Development Workflow
 
 1. Always run `dotnet restore` after pulling new changes
-2. Build the solution with `dotnet build` to verify compilation
-3. Run tests to ensure everything works correctly
+2. After making any modifications, **build the solution** with `dotnet build` to verify that it compiles successfully. Ensure the build completes without errors before proceeding.
+3. **Re-format the code** to ensure it is readable and follows standard C# formatting conventions. Use your IDE's built-in code formatting tools (e.g., Visual Studio: `Ctrl+K, Ctrl+D` or right-click > Format Document).
+4. **Move code to smaller classes if needed**: If a file or class becomes too large or complex, refactor the code by splitting it into smaller, focused classes. This improves maintainability and readability. Place new classes in appropriate folders (e.g., `Helpers/`, `Models/`, etc.).
+5. Run tests to ensure everything works correctly
 
 
 ## Project Structure
